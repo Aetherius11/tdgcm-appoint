@@ -11,4 +11,9 @@ class Principal extends Model
     public function department() {
         return $this->belongsTo(OfficeDepartment::class, 'department_id');
     }
+
+    public function purposes()
+    {
+        return $this->belongsToMany(Purpose::class);
+    }
 }

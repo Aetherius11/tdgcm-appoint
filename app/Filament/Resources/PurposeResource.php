@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\MultiSelect;
 
 class PurposeResource extends Resource
 {
@@ -24,16 +25,20 @@ class PurposeResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 2;
 
+
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('principal_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('purpose_name')
-                    ->required()
-                    ->maxLength(150),
+                Forms\Components\TextInput::make('purpose_name')->required(),
+                
+                // Replace your old Select::make('principal_id') with this:
+                Forms\Components\Select::make('principals')
+                    ->multiple() // This is the key!
+                    ->relationship('principals', 'name')
+                    ->preload()
+                    ->required(),
             ]);
     }
 

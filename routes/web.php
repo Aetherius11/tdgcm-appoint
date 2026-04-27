@@ -15,3 +15,7 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
+
+use App\Http\Controllers\ApplicantAppointmentController;
+
+Route::get('/appointments-list', [ApplicantAppointmentController::class, 'index'])->name('appointments.external');

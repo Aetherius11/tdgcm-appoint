@@ -24,7 +24,13 @@ class Appointment extends Model
         return $this->belongsTo(Applicant::class);
     }
 
-    // 3. Define the connection to the Purpose
+    // 3. Define the connection to the Principal
+    public function principal(): BelongsTo
+    {
+        return $this->belongsTo(Principal::class);
+    }
+
+    // 4. Define the connection to the Purpose
     public function purpose(): BelongsTo
     {
         return $this->belongsTo(Purpose::class);

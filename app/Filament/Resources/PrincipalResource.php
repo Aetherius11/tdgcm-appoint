@@ -7,6 +7,7 @@ use App\Filament\Resources\PrincipalResource\RelationManagers;
 use App\Models\Principal;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,9 +29,12 @@ class PrincipalResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('department_id')
-                    ->required()
-                    ->numeric(),
+                Select::make('department_id')
+                ->label('Department')
+                ->relationship('department', 'name') // This fetches valid names/IDs automatically
+                ->required()
+                ->preload()
+                ->searchable(),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(100),

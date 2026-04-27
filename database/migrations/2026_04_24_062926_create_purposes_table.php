@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('purposes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('principal_id')->constrained('principals')->cascadeOnDelete();
             $table->string('purpose_name', 150);
             $table->integer('estimated_mins')->default(30);
             $table->timestamps();

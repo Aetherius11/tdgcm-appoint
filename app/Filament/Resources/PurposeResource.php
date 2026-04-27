@@ -51,9 +51,6 @@ class PurposeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('purpose_name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('estimated_mins')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

@@ -16,4 +16,12 @@ class Principal extends Model
     {
         return $this->belongsToMany(Purpose::class);
     }
+
+    public function parent() {
+    return $this->belongsTo(Principal::class, 'parent_id');
+    }
+
+    public function children() {
+        return $this->hasMany(Principal::class, 'parent_id');
+    }
 }

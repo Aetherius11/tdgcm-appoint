@@ -3,27 +3,24 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
-use App\Filament\Resources\AppointmentResource\RelationManagers;
 use App\Models\Appointment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Get; // Add this
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection; // Add this
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AppointmentResource extends Resource
 {
     protected static ?string $model = Appointment::class;
 
-    // This puts the resource into the "System Maintenance" group
-    protected static ?string $navigationGroup = 'System Maintenance';
-    
-    // Use this to change the icon (e.g., a building icon)
-    protected static ?string $navigationIcon = 'heroicon-o-building-office';
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationGroup = 'Operations'; // Group it for better UI
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -37,37 +34,41 @@ class AppointmentResource extends Resource
                     ->relationship('applicant', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")
                     ->searchable()
+                    ->preload()
                     ->required(),
 
+                // 1. Select Main Principal
+                Select::make('main_principal_id')
+                    ->label('Department/Category')
+                    ->options(Principal::whereNull('parent_id')->pluck('name', 'id'))
+                    ->live()
+                    ->afterStateUpdated(fn ($set) => $set('principal_id', null)),
+
+                // 2. Select Sub-Principal (Only shows if the main one has children)
                 Select::make('principal_id')
                     ->label('Principal')
-                    ->relationship('principal', 'name')
-                    ->live() // CRITICAL: This makes the form refresh when the principal changes
-                    ->afterStateUpdated(fn (Forms\Set $set) => $set('purpose_id', null)) // Clear purpose if principal changes
+                    ->options(fn (Get $get) => 
+                        Principal::where('parent_id', $get('main_principal_id'))->pluck('name', 'id')
+                    )
+                    ->visible(fn (Get $get) => 
+                        Principal::where('parent_id', $get('main_principal_id'))->exists()
+                    )
+                    ->live()
                     ->required(),
 
+                // 3. Select Purpose (Filters based on the Sub-Principal selected)
                 Select::make('purpose_id')
-                    ->label('Purpose')
-                    ->placeholder(fn (Get $get): string => empty($get('principal_id')) ? 'First select a principal' : 'Select a purpose')
-                    ->options(function (Get $get): Collection {
-                        $principalId = $get('principal_id');
-                        
-                        if (!$principalId) {
-                            return collect();
-                        }
-
-                        // Fetch only purposes belonging to the selected principal
-                        return \App\Models\Purpose::query()
-                            ->where('principal_id', $principalId)
-                            ->pluck('purpose_name', 'id');
-                    })
-                    ->required()
-                    ->key('purpose_select'), // Ensures the component re-renders
+                    ->options(fn (Get $get) => 
+                        Purpose::whereHas('principals', fn ($q) => 
+                            $q->where('principals.id', $get('principal_id'))
+                        )->pluck('purpose_name', 'id')
+                    )
+                    ->required(),
 
                 Forms\Components\DatePicker::make('appointment_date')
                     ->required(),
 
-                Forms\Components\Select::make('status')
+                Select::make('status')
                     ->options([
                         'pending' => 'Pending',
                         'approved' => 'Approved',
@@ -85,41 +86,51 @@ class AppointmentResource extends Resource
     {
         return $table
             ->columns([
-                // 1. Name (From Applicant relationship)
                 Tables\Columns\TextColumn::make('applicant.first_name')
                     ->label('Applicant Name')
                     ->formatStateUsing(fn ($record) => "{$record->applicant->first_name} {$record->applicant->last_name}")
-                    ->searchable(),
+                    ->searchable(), // This allows searching by Name
 
-                // 2. Principal
                 Tables\Columns\TextColumn::make('principal.name')
                     ->label('Principal')
                     ->sortable(),
 
-                // 3. Purposes
                 Tables\Columns\TextColumn::make('purpose.purpose_name')
                     ->label('Purpose'),
 
-                // 4. Date & Time
-                Tables\Columns\TextColumn::make('appointment_date')
-                    ->label('Schedule')
-                    ->dateTime('M d, Y') // You can concatenate time if stored separately
-                    ->sortable(),
-
-                // 5. Appoint ID
-                Tables\Columns\TextColumn::make('appoint_id')
+                Tables\Columns\TextColumn::make('appoint_no')
                     ->label('Appointment ID')
-                    ->searchable(),
+                    ->searchable(), // This allows searching by Appointment ID
 
-                // 6. Status
                 Tables\Columns\TextColumn::make('status')
-                    ->badge() // Makes it look professional
-                    ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'approved' => 'success',
-                        'cancelled' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->badge(),
+            ])
+            ->filters([
+                // 1. Filter by Principal
+                Tables\Filters\SelectFilter::make('principal')
+                    ->relationship('principal', 'name')
+                    ->label('Filter by Principal'),
+
+                // 2. Filter by Purpose
+                Tables\Filters\SelectFilter::make('purpose')
+                    ->relationship('purpose', 'purpose_name')
+                    ->label('Filter by Purpose'),
+
+                // 3. Filter by Status (Optional but helpful)
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'cancelled' => 'Cancelled',
+                    ]),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 

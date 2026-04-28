@@ -1,28 +1,23 @@
 <?php
 
+use App\Http\Controllers\AppointmentController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
 
-// 1. This SHOWS the TCM EasyQue page
-// Make sure your file is named 'appointment.blade.php' in resources/views
-Route::get('/', function () {
-    return view('appointment');
-});
+// Public appointment routes
+Route::get('/', [AppointmentController::class, 'create'])->name('appointment.create');
+Route::post('/submit-appointment', [AppointmentController::class, 'store'])->name('appointment.store');
+Route::get('/appointment/{appointment}', [AppointmentController::class, 'show'])->name('appointment.show');
+Route::get('/api/time-slots', [AppointmentController::class, 'getAvailableTimeSlots'])->name('api.time-slots');
 
-// 2. This HANDLES the form submission
-Route::post('/submit-appointment', function (Request $request) {
-    return $request->all();
-})->name('appointment.store');
-
-// 3. Protected Dashboard Routes
+// Admin appointments list (protected)
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
+    Route::get('/appointments-list', [AppointmentController::class, 'index'])->name('appointments.index');
 
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
-
-}); // <--- This was the missing closing bracket and parenthesis!
+});

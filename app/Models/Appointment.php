@@ -9,14 +9,33 @@ class Appointment extends Model
 {
     // 1. List the columns from your migration
     protected $fillable = [
-        'appoint_id',
+        'appoint_no',
         'applicant_id',
+        'principal_id',
         'purpose_id',
         'appointment_date',
         'time_slot_id',
         'status',
         'remarks',
     ];
+
+    // Boot method to generate unique appointment number
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($appointment) {
+            if (empty($appointment->appoint_no)) {
+                // Generate unique appointment number like A-2026042701
+                $date = date('Ymd');
+                $lastAppointment = static::whereDate('created_at', today())
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $sequence = $lastAppointment ? (intval(substr($lastAppointment->appoint_no, -2)) + 1) : 1;
+                $appointment->appoint_no = 'A-'.$date.str_pad($sequence, 2, '0', STR_PAD_LEFT);
+            }
+        });
+    }
 
     // 2. Define the connection to the Applicant
     public function applicant(): BelongsTo
@@ -34,5 +53,11 @@ class Appointment extends Model
     public function purpose(): BelongsTo
     {
         return $this->belongsTo(Purpose::class);
+    }
+
+    // 5. Define the connection to the Time Slot
+    public function timeSlot(): BelongsTo
+    {
+        return $this->belongsTo(TimeAvailability::class, 'time_slot_id');
     }
 }

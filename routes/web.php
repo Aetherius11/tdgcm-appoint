@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use App\Http\Controllers\ApplicantAppointmentController;
 
 // 1. This SHOWS the TCM EasyQue page
 // Make sure your file is named 'appointment.blade.php' in resources/views
@@ -26,3 +27,6 @@ Route::middleware([
     })->name('dashboard');
 
 }); // <--- This was the missing closing bracket and parenthesis!
+
+// Make sure this matches the URL you are typing in the browser
+Route::get('/appointments-list', [ApplicantAppointmentController::class, 'index']);

@@ -8,15 +8,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Appointment extends Model
 {
     // 1. List the columns from your migration
-    protected $fillable = [
-        'appoint_id',
+        protected $fillable = [
+        'appoint_no',
         'applicant_id',
         'principal_id',
         'purpose_id',
-        'appointment_date',
+        'appointment_date', // <--- REQUIRED
         'time_slot_id',
         'status',
         'remarks',
+    ];
+
+    protected $casts = [
+        'appointment_date' => 'date',
     ];
 
     // 2. Define the connection to the Applicant

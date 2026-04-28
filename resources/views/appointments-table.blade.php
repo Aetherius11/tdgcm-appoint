@@ -92,8 +92,8 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($appointments as $appointment)
                         <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 font-mono text-sm text-blue-600 font-medium">
-                                #{{ $appointment->appoint_id }}
+                            <td class="px-6 py-4 text-sm font-medium text-blue-600">
+                                #{{ $appointment->appoint_no }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-800">
                                 {{ $appointment->applicant->first_name }} {{ $appointment->applicant->last_name }}

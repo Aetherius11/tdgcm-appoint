@@ -143,11 +143,11 @@
                                 <input type="text" name="last_name" placeholder="Last Name" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
                             </div>
                         </div>
-
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
                             <input type="email" name="email" placeholder="email@example.com" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
                         </div>
+                    </div>
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Number</label>

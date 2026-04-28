@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
+use App\Models\Principal;
+use App\Models\Purpose;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Select;
@@ -13,6 +15,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection; // Add this
 use Illuminate\Database\Eloquent\Builder;
+
+
 
 class AppointmentResource extends Resource
 {
@@ -46,23 +50,33 @@ class AppointmentResource extends Resource
 
                 // 2. Select Sub-Principal (Only shows if the main one has children)
                 Select::make('principal_id')
-                    ->label('Principal')
+                    ->label('Sub-Principal')
                     ->options(fn (Get $get) => 
                         Principal::where('parent_id', $get('main_principal_id'))->pluck('name', 'id')
                     )
+                    // Only show if the selected Main Principal actually has children
                     ->visible(fn (Get $get) => 
                         Principal::where('parent_id', $get('main_principal_id'))->exists()
                     )
                     ->live()
-                    ->required(),
+                    ->required(fn (Get $get) => 
+                        Principal::where('parent_id', $get('main_principal_id'))->exists()
+                    ),
 
                 // 3. Select Purpose (Filters based on the Sub-Principal selected)
                 Select::make('purpose_id')
-                    ->options(fn (Get $get) => 
-                        Purpose::whereHas('principals', fn ($q) => 
-                            $q->where('principals.id', $get('principal_id'))
-                        )->pluck('purpose_name', 'id')
-                    )
+                    ->label('Purpose')
+                    ->options(function (Get $get) {
+                        // Fallback logic: if no sub-principal is picked, use the main one
+                        $id = $get('principal_id') ?? $get('main_principal_id');
+                        
+                        if (!$id) return [];
+
+                        return Purpose::whereHas('principals', fn ($q) => 
+                            $q->where('principals.id', $id)
+                        )->pluck('purpose_name', 'id');
+                    })
+                    ->live() // Ensure it updates when selection changes
                     ->required(),
 
                 Forms\Components\DatePicker::make('appointment_date')

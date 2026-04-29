@@ -20,7 +20,12 @@ class AppointmentController extends Controller
         $purposes = Purpose::all();
         $timeSlots = TimeAvailability::all();
 
-        return view('appointment', compact('principals', 'purposes', 'timeSlots'));
+        // Get current Philippine time (UTC+8)
+        $philippineTime = now()->setTimezone('Asia/Manila');
+        $currentTime = $philippineTime->format('H:i');
+        $currentDate = $philippineTime->format('Y-m-d');
+
+        return view('appointment', compact('principals', 'purposes', 'timeSlots', 'currentTime', 'currentDate'));
     }
 
     /**

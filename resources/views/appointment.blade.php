@@ -125,12 +125,13 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Time</label>
-                            <select name="time_slot_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select name="time_slot_id" id="time_slot_select" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="">Select a time</option>
                                 @foreach($timeSlots as $slot)
-                                    <option value="{{ $slot->id }}">{{ $slot->start_time }} - {{ $slot->end_time }}</option>
+                                    <option value="{{ $slot->id }}" data-start="{{ $slot->start_time }}" data-end="{{ $slot->end_time }}">{{ $slot->start_time }} - {{ $slot->end_time }}</option>
                                 @endforeach
                             </select>
+                            <p class="text-xs text-gray-400 mt-1" id="time_note"></p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -172,9 +173,13 @@
 
 
         <script>
+    // Current Philippine time passed from controller
+    const currentPhilippineTime = '{{ $currentTime }}';
+    const currentDate = '{{ $currentDate }}';
+
     flatpickr("#appointment_date", {
         dateFormat: "Y-m-d",
-        minDate: "today", // No past dates!
+        minDate: "today",
         disable: [
             function(date) {
                 // 0 = Sunday, 5 = Friday, 6 = Saturday
@@ -183,7 +188,87 @@
         ],
         locale: {
             "firstDayOfWeek": 0 // Monday start
+        },
+        onChange: function(selectedDates, dateStr, instance) {
+            // Re-evaluate time slots when date changes
+            evaluateTimeSlots(dateStr);
         }
+    });
+
+    // Function to compare time strings (HH:MM format)
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+
+    // Function to evaluate and disable/enable time slots based on current time and selected date
+    function evaluateTimeSlots(selectedDate) {
+        const timeSelect = document.getElementById('time_slot_select');
+        const options = timeSelect.querySelectorAll('option');
+        const noteElement = document.getElementById('time_note');
+        
+        // Parse selected date
+        const selectedDateObj = new Date(selectedDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDateObj.setHours(0, 0, 0, 0);
+
+        const isToday = selectedDateObj.getTime() === today.getTime();
+
+        options.forEach(option => {
+            if (!option.value) return; // Skip the placeholder option
+
+            const endTime = option.getAttribute('data-end');
+            const startTime = option.getAttribute('data-start');
+
+            if (isToday && endTime) {
+                const endMinutes = timeToMinutes(endTime);
+                const currentMinutes = timeToMinutes(currentPhilippineTime);
+
+                // Disable if the time slot has already ended
+                if (endMinutes <= currentMinutes) {
+                    option.disabled = true;
+                    option.style.color = '#9ca3af';
+                    option.style.fontStyle = 'italic';
+                } else {
+                    option.disabled = false;
+                    option.style.color = '';
+                    option.style.fontStyle = '';
+                }
+            } else {
+                // For future dates, all slots are available
+                option.disabled = false;
+                option.style.color = '';
+                option.style.fontStyle = '';
+            }
+        });
+
+        // Update note
+        if (isToday) {
+            noteElement.textContent = 'Greyed out slots are no longer available for today.';
+        } else if (selectedDate) {
+            noteElement.textContent = 'All time slots are available for the selected date.';
+        } else {
+            noteElement.textContent = '';
+        }
+
+        // Reset selection if current selection is disabled
+        if (timeSelect.value) {
+            const selectedOption = timeSelect.options[timeSelect.selectedIndex];
+            if (selectedOption.disabled) {
+                timeSelect.value = '';
+            }
+        }
+    }
+
+    // Initialize time slots on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        evaluateTimeSlots(currentDate);
+        
+        // Update time slots every minute to reflect current time changes
+        setInterval(function() {
+            evaluateTimeSlots(currentDate);
+        }, 60000); // Check every minute
     });
 </script>
 

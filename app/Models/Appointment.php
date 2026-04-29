@@ -13,7 +13,7 @@ class Appointment extends Model
         'applicant_id',
         'principal_id',
         'purpose_id',
-        'appointment_date',
+        'appointment_date', // <--- REQUIRED
         'time_slot_id',
         'status',
         'remarks',

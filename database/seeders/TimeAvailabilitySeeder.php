@@ -12,25 +12,103 @@ class TimeAvailabilitySeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\TimeAvailability::insert([
-            [
-                'purpose_id' => 1,
-                'day_of_week' => 1, // Change 'Monday' to 1
-                'start_time' => '09:00:00',
-                'end_time' => '10:00:00',
-                'max_slots' => 10,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'purpose_id' => 1,
-                'day_of_week' => 1, // Change 'Monday' to 1
-                'start_time' => '10:00:00',
-                'end_time' => '11:00:00',
-                'max_slots' => 10,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        ]);
+        $purposes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // IDs for Contract, Interview, Inquiry
+        $days = [1, 2, 3, 4, 5];  // Mon, Tue, Wed, Thu
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '09:00:00',
+                    'end_time' => '10:00:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '10:00:00',
+                    'end_time' => '11:00:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '11:00:00',
+                    'end_time' => '12:00:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '01:30:00',
+                    'end_time' => '02:30:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '02:30:00',
+                    'end_time' => '03:30:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '02:30:00',
+                    'end_time' => '03:30:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '03:30:00',
+                    'end_time' => '04:30:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
+
+        foreach ($purposes as $purpose) {
+            foreach ($days as $day) {
+                \App\Models\TimeAvailability::insert([
+                    'purpose_id' => $purpose,
+                    'day_of_week' => $day,
+                    'start_time' => '04:30:00',
+                    'end_time' => '05:30:00',
+                    'max_slots' => 5,
+                ]);
+            }
+        }
     }
 }

@@ -100,7 +100,7 @@
 </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Principal</label>
-                            <select name="principal_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                            <select name="principal_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="">Select Principal</option>
                                 @foreach($principals as $principal)
                                     <option value="{{ $principal->id }}">{{ $principal->name }}</option>
@@ -110,7 +110,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Purpose</label>
-                            <select name="purpose_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                            <select name="purpose_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="">Select Purpose</option>
                                 @foreach($purposes as $purpose)
                                     <option value="{{ $purpose->id }}">{{ $purpose->purpose_name }}</option>
@@ -118,45 +118,41 @@
                             </select>
                         </div>
 
-                       <div>
-        <div>
-            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Appointment Date</label>
-            <input type="text" name="appointment_date" id="appointment_date" placeholder="Select a date" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer" readonly required>
-        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Appointment Date</label>
+                            <input type="text" name="appointment_date" id="appointment_date" placeholder="Select a date" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer" readonly>
+                        </div>
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Time</label>
-                            <select name="appointment_time" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                            <select name="time_slot_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="">Select a time</option>
-                                <option value="1">09:00 AM - 10:00 AM</option>
-                                <option value="2">10:00 AM - 11:00 AM</option>
-                                <option value="3">01:00 PM - 02:00 PM</option>
-                                <option value="4">02:00 PM - 03:00 PM</option>
-                                <option value="5">03:00 PM - 04:00 PM</option>
-                                <option value="6">04:00 PM - 05:00 PM</option>
+                                @foreach($timeSlots as $slot)
+                                    <option value="{{ $slot->id }}">{{ $slot->start_time }} - {{ $slot->end_time }}</option>
+                                @endforeach
                             </select>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                            <label class="...">First Name</label>
-                            <input type="text" name="first_name" placeholder="First Name" class="..." required>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">First Name</label>
+                                <input type="text" name="first_name" placeholder="First Name" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Last Name</label>
+                                <input type="text" name="last_name" placeholder="Last Name" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                            </div>
                         </div>
                         <div>
-                            <label class="...">Last Name</label>
-                            <input type="text" name="last_name" placeholder="Last Name" class="..." required>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+                            <input type="email" name="email" placeholder="email@example.com" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
                         </div>
                     </div>
 
-                    <div>
-                        <label class="...">Email</label>
-                        <input type="email" name="email" placeholder="email@example.com" class="..." required>
-                    </div>
-
-                    <div>
-                        <label class="...">Contact Number</label>
-                        <input type="text" name="contact_number" placeholder="Contact Number" class="..." required>
-                    </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Number</label>
+                            <input type="text" name="phone" placeholder="Contact Number" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                        </div>
 
                         <button type="submit" class="w-full bg-[#3b82f6] hover:bg-blue-700 text-white font-bold py-4 rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-[0.98]">
                             Submit

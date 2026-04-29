@@ -130,7 +130,157 @@ class AppointmentController extends Controller
     {
         $appointments = Appointment::with(['applicant', 'principal', 'purpose', 'timeSlot'])->latest()->paginate(15);
 
-        return view('appointments.index', compact('appointments'));
+        return view('appointments-table', compact('appointments'));
+    }
+
+    /**
+     * Display the QR scanner page for guards.
+     */
+    public function showScanner()
+    {
+        return view('qr-scanner');
+    }
+
+    /**
+     * Process QR code scan and validate appointment.
+     */
+    public function processQRScan(Request $request)
+    {
+        $validated = $request->validate([
+            'qr_data' => 'required|string',
+        ]);
+
+        try {
+            // Decode the QR data (it's a JSON string)
+            $qrData = json_decode($validated['qr_data'], true);
+            
+            // Log for debugging
+            \Log::info('QR Scan received:', ['raw_data' => $validated['qr_data'], 'decoded' => $qrData]);
+
+            // If qr_data is already an appointment number (not JSON), handle it
+            if (is_string($qrData) && preg_match('/^A-\d+$/i', $qrData)) {
+                $appointmentNo = $qrData;
+            } 
+            // If qr_data is JSON with appointment_no
+            elseif (is_array($qrData) && isset($qrData['appointment_no'])) {
+                $appointmentNo = $qrData['appointment_no'];
+            }
+            // If the entire request is just an appointment number
+            elseif (preg_match('/^A-\d+$/i', $validated['qr_data'])) {
+                $appointmentNo = $validated['qr_data'];
+            }
+            else {
+                \Log::warning('Invalid QR data format', ['qr_data' => $validated['qr_data']]);
+                return response()->json([
+                    'success' => false,
+                    'status' => 'not_found',
+                    'message' => 'Appointment not found. Invalid QR code format.',
+                    'debug' => [
+                        'received' => $validated['qr_data'],
+                        'decoded' => $qrData
+                    ]
+                ]);
+            }
+
+            \Log::info('Looking for appointment:', ['appointment_no' => $appointmentNo]);
+
+            // Find the appointment by appointment number
+            $appointment = Appointment::with(['applicant', 'principal', 'purpose', 'timeSlot'])
+                ->where('appoint_no', $appointmentNo)
+                ->first();
+
+            if (!$appointment) {
+                return response()->json([
+                    'success' => false,
+                    'status' => 'not_found',
+                    'message' => 'Appointment not found. Invalid QR code.',
+                ]);
+            }
+
+            // Check if already checked in
+            if ($appointment->checked_in_at) {
+                return response()->json([
+                    'success' => false,
+                    'status' => 'already_checked_in',
+                    'message' => 'This appointment has already been checked in.',
+                    'appointment' => [
+                        'appoint_no' => $appointment->appoint_no,
+                        'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                        'principal' => $appointment->principal->name ?? 'N/A',
+                        'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
+                        'date' => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
+                        'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                        'checked_in_at' => $appointment->checked_in_at->format('M d, Y h:i A'),
+                    ],
+                ]);
+            }
+
+            // Get the appointment end time
+            $appointmentDateTime = \Carbon\Carbon::parse($appointment->appointment_date);
+            $endTime = null;
+
+            if ($appointment->timeSlot) {
+                $endHourMinute = $appointment->timeSlot->end_time; // e.g., "11:00"
+                list($hour, $minute) = explode(':', $endHourMinute);
+                $appointmentDateTime = $appointmentDateTime->setTime((int)$hour, (int)$minute);
+                $endTime = $appointmentDateTime;
+            }
+
+            // Current Philippine time
+            $now = \Carbon\Carbon::now()->setTimezone('Asia/Manila');
+
+            // Check if appointment is expired (more than 1 hour past end time)
+            if ($endTime && $now->diffInMinutes($endTime, false) < -60) {
+                // Appointment expired - update status
+                $appointment->update([
+                    'status' => 'cancelled',
+                    'remarks' => 'Appointment expired - checked in more than 1 hour late',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'status' => 'expired',
+                    'message' => 'Appointment expired. This appointment was scheduled for ' . $endTime->format('h:i A') . ' and it\'s now past the 1-hour grace period.',
+                    'appointment' => [
+                        'appoint_no' => $appointment->appoint_no,
+                        'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                        'principal' => $appointment->principal->name ?? 'N/A',
+                        'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
+                        'date' => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
+                        'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                        'scheduled_end' => $endTime->format('h:i A'),
+                    ],
+                ]);
+            }
+
+            // Valid appointment - check in
+            $appointment->update([
+                'status' => 'approved',
+                'checked_in_at' => $now,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'status' => 'checked_in',
+                'message' => 'Successfully checked in!',
+                'appointment' => [
+                    'appoint_no' => $appointment->appoint_no,
+                    'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                    'principal' => $appointment->principal->name ?? 'N/A',
+                    'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
+                    'date' => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
+                    'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                    'checked_in_at' => $now->format('h:i A'),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'An error occurred while processing the QR code: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

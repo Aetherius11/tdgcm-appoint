@@ -16,7 +16,13 @@ class Appointment extends Model
         'appointment_date', // <--- REQUIRED
         'time_slot_id',
         'status',
+        'checked_in_at',
         'remarks',
+    ];
+
+    protected $casts = [
+        'checked_in_at' => 'datetime',
+        'appointment_date' => 'date',
     ];
 
     // Boot method to generate unique appointment number

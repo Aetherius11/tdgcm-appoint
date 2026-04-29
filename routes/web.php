@@ -16,6 +16,8 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/appointments-list', [AppointmentController::class, 'index'])->name('appointments.index');
+    Route::get('/qr-scanner', [AppointmentController::class, 'showScanner'])->name('qr.scanner');
+    Route::post('/qr-scan', [AppointmentController::class, 'processQRScan'])->name('qr.scan');
 
     Route::get('/dashboard', function () {
         return view('dashboard');

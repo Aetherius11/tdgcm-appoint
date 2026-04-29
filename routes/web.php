@@ -21,3 +21,27 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
+
+Route::get('/', function () {
+    // Get the top-level categories (DCL, WOW, etc.)
+    $principals = Principal::whereNull('parent_id')->get();
+    
+    // Get all purposes for the second dropdown
+    $purposes = Purpose::all();
+
+    // The 'compact' function sends the variables to appointment.blade.php
+    return view('appointment', compact('principals', 'purposes'));
+});
+
+Route::get('/tv-display', [App\Http\Controllers\TVDisplayController::class, 'index'])->name('tv.display');
+
+
+// The Logic to Save
+// Update this line to point to the Controller instead of the temporary function
+Route::post('/submit-appointment', [AppointmentController::class, 'store'])->name('appointment.store');
+
+// The Table List (Your previous work)
+Route::get('/appointments-list', [ApplicantAppointmentController::class, 'index'])->name('appointments.list');
+
+// Make sure this matches the URL you are typing in the browser
+Route::get('/appointments-list', [ApplicantAppointmentController::class, 'index']);

@@ -51,6 +51,7 @@ Route::get('/', function () {
     return view('appointment', compact('principals', 'purposes'));
 });
 
+Route::get('/tv-display', [App\Http\Controllers\TVDisplayController::class, 'index'])->name('tv.display');
 
 
 // The Logic to Save

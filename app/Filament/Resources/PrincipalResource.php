@@ -45,12 +45,12 @@ class PrincipalResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('department_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('department.name')
+                    ->label('Department')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('contact_info')
+                Tables\Columns\TextColumn::make('purpose')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()

@@ -46,11 +46,6 @@ class TimeAvailabilityResource extends Resource
     {
         return $table
             ->columns([
-                // 1. Shows the Purpose Name from the relationship
-                TextColumn::make('purpose.purpose_name')
-                    ->label('Purpose')
-                    ->sortable()
-                    ->searchable(),
 
                 // 2. Shows the Day (formatted for readability)
                 TextColumn::make('day_of_week')

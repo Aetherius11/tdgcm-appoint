@@ -46,12 +46,12 @@ class PurposeResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('purpose_name')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('principals.name') // Notice the 's' for plural
                     ->label('Principals')
                     ->badge() // Makes them look like clean tags
-                    ->separator(','),
-                Tables\Columns\TextColumn::make('purpose_name')
-                    ->searchable(),
+                    ->separator(','),    
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

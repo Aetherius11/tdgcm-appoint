@@ -29,15 +29,16 @@ class PrincipalResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('department_id')
-                ->label('Department')
-                ->relationship('department', 'name') // This fetches valid names/IDs automatically
-                ->required()
-                ->preload()
-                ->searchable(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(100),
+                Forms\Components\TextInput::make('name')->required(), 
+
+                Forms\Components\Select::make('purposes')
+                    ->multiple()
+                    ->relationship(
+                        name: 'purposes', 
+                        titleAttribute: 'purpose_name' // FIXED: Changed from 'name' to 'purpose_name'
+                    )
+                    ->preload()
+                    ->required(),
             ]);
     }
 
@@ -45,13 +46,16 @@ class PrincipalResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('department.name')
-                    ->label('Department')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('department.department_name') // Ensure this matches your Department table column
+                ->label('Department')
+                ->sortable(),              
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('purpose')
-                    ->searchable(),
+                    ->label('Principal Name')
+                    ->searchable(),                  
+                Tables\Columns\TextColumn::make('purposes.purpose_name') // FIXED: Notice 'purpose_name'
+                    ->label('Purposes')
+                    ->badge()
+                    ->separator(','),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

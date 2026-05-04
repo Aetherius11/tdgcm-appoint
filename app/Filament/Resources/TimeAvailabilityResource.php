@@ -23,9 +23,6 @@ class TimeAvailabilityResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('purpose_id')
-                    ->relationship('purpose', 'purpose_name') // Automatically links to Purpose table
-                    ->required(),
                 Forms\Components\Select::make('day_of_week')
                     ->options([
                         1 => 'Monday',

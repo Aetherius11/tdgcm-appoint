@@ -26,14 +26,6 @@
 
             <nav class="hidden lg:flex gap-5 text-[11px] font-bold uppercase tracking-widest text-gray-300">
                 <a href="#" class="hover:text-white transition">Home</a>
-                <a href="#" class="hover:text-white transition">DCL</a>
-                <a href="#" class="hover:text-white transition">NYKC</a>
-                <a href="#" class="hover:text-white transition">WOW</a>
-                <a href="#" class="text-white border-b-2 border-blue-500 pb-1">DG3</a>
-                <a href="#" class="hover:text-white transition">Cruise Visa Processing</a>
-                <a href="#" class="hover:text-white transition">Fleet B</a>
-                <a href="#" class="hover:text-white transition">Recruitment</a>
-                <a href="#" class="hover:text-white transition">Crew Welfare</a>
             </nav>
 
             <div class="flex items-center gap-4">

@@ -9,6 +9,11 @@ Route::post('/submit-appointment', [AppointmentController::class, 'store'])->nam
 Route::get('/appointment/{appointment}', [AppointmentController::class, 'show'])->name('appointment.show');
 Route::get('/api/time-slots', [AppointmentController::class, 'getAvailableTimeSlots'])->name('api.time-slots');
 
+// Public Queue Display
+Route::get('/queue-display', function () {
+    return view('livewire.queue-display');
+})->name('queue.display');
+
 // Admin appointments list (protected)
 Route::middleware([
     'auth:sanctum',

@@ -19,9 +19,7 @@ Route::middleware([
     Route::get('/qr-scanner', [AppointmentController::class, 'showScanner'])->name('qr.scanner');
     Route::post('/qr-scan', [AppointmentController::class, 'processQRScan'])->name('qr.scan');
 
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [AppointmentController::class, 'index'])->name('dashboard');
 });
 
 Route::get('/tv-display', [App\Http\Controllers\TVDisplayController::class, 'index'])->name('tv.display');

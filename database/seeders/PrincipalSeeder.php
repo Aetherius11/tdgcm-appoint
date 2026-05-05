@@ -19,8 +19,6 @@ class PrincipalSeeder extends Seeder
         if (! $company) {
             $company = Company::create([
                 'name' => 'TDGCM',
-                'address' => 'Manila, Philippines',
-                'contact_info' => 'info@tdgcm.com',
             ]);
         }
 

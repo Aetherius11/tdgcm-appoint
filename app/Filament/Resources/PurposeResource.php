@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PurposeResource\Pages;
 use App\Filament\Resources\PurposeResource\RelationManagers;
 use App\Models\Purpose;
+use Filament\Forms\Components\Select;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +14,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\MultiSelect;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Collection;
 
 class PurposeResource extends Resource
 {
@@ -33,12 +36,11 @@ class PurposeResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('purpose_name')->required(),
                 
-                // Replace your old Select::make('principal_id') with this:
-                Forms\Components\Select::make('principals')
-                    ->multiple() // This is the key!
-                    ->relationship('principals', 'name')
-                    ->preload()
-                    ->required(),
+                Select::make('time_availabilities') // This is the form field name
+                ->multiple()
+                ->relationship('timeAvailabilities', 'id') // This must match the function name in Purpose.php
+                ->getOptionLabelFromRecordUsing(fn ($record) => "Day {$record->day_of_week}: {$record->start_time} - {$record->end_time}")
+                ->preload()
             ]);
     }
 
@@ -46,12 +48,35 @@ class PurposeResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('principals.name') // Notice the 's' for plural
-                    ->label('Principals')
-                    ->badge() // Makes them look like clean tags
-                    ->separator(','),
                 Tables\Columns\TextColumn::make('purpose_name')
                     ->searchable(),
+                // Change 'timeAvailabilities' to 'availabilities' (a custom name)
+                Tables\Columns\TextColumn::make('availabilities')
+                    ->label('Available Days')
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    // We use the $record (the Purpose model) to get the data
+                    ->state(function ($record): array {
+                    return $record->timeAvailabilities
+                        ->groupBy(fn ($slot) => $slot->start_time . '-' . $slot->end_time)
+                        ->map(function ($group, $timeRange) {
+                            // Added unique() to prevent the "Mon,Mon,Tues" issue in your screenshot
+                            $days = $group->pluck('day_of_week')
+                                ->unique() 
+                                ->map(fn ($day) => match ((int)$day) {
+                                    1 => 'Mon', 2 => 'Tues', 3 => 'Wed', 
+                                    4 => 'Thur', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun',
+                                    default => 'Other',
+                                })
+                                ->implode(',');
+
+                            return "{$timeRange} ({$days})";
+                        })
+                        ->values()
+                        ->toArray();
+                })
+                    ->color('success')
+                    ->weight('bold'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

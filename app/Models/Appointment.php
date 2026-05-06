@@ -16,8 +16,15 @@ class Appointment extends Model
         'appointment_date', // <--- REQUIRED
         'time_slot_id',
         'status',
+        'counter_number',
         'checked_in_at',
         'remarks',
+        'called_at',
+    'checked_in_at',
+    'principal_id',
+    'status',        // Add this
+    'window_number', // Add this
+    'served_at',
     ];
 
     protected $casts = [

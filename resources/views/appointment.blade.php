@@ -16,7 +16,7 @@
 <body class="bg-[#F4F7FA] text-[#1b1b18] min-h-screen">
 
     <header class="w-full bg-[#111827] text-white shadow-lg">
-        <div class="max-w-7xl mx-auto flex justify-between items-center py-3 px-6">
+        <div class="max-w-7xl mx-auto flex justify-between items-center py-6 px-6">
             <div class="flex items-center gap-2">
                 <div class="bg-white p-1 rounded">
                     <span class="text-black font-bold text-xs">TCM</span>
@@ -25,15 +25,7 @@
             </div>
 
             <nav class="hidden lg:flex gap-5 text-[11px] font-bold uppercase tracking-widest text-gray-300">
-                <a href="#" class="hover:text-white transition">Home</a>
-                <a href="#" class="hover:text-white transition">DCL</a>
-                <a href="#" class="hover:text-white transition">NYKC</a>
-                <a href="#" class="hover:text-white transition">WOW</a>
-                <a href="#" class="text-white border-b-2 border-blue-500 pb-1">DG3</a>
-                <a href="#" class="hover:text-white transition">Cruise Visa Processing</a>
-                <a href="#" class="hover:text-white transition">Fleet B</a>
-                <a href="#" class="hover:text-white transition">Recruitment</a>
-                <a href="#" class="hover:text-white transition">Crew Welfare</a>
+
             </nav>
 
             <div class="flex items-center gap-4">
@@ -88,7 +80,7 @@
                   @csrf
 
 
-                        <<div class="p-6 bg-white rounded-lg border border-blue-100 space-y-4">
+                        <div class="p-6 bg-white rounded-lg border border-blue-500 space-y-4">
     <h3 class="text-xl font-bold text-gray-900">Privacy Consent</h3>
 
     <div class="flex gap-3 items-start">
@@ -206,7 +198,7 @@
         const timeSelect = document.getElementById('time_slot_select');
         const options = timeSelect.querySelectorAll('option');
         const noteElement = document.getElementById('time_note');
-        
+
         // Parse selected date
         const selectedDateObj = new Date(selectedDate);
         const today = new Date();
@@ -264,7 +256,7 @@
     // Initialize time slots on page load
     document.addEventListener('DOMContentLoaded', function() {
         evaluateTimeSlots(currentDate);
-        
+
         // Update time slots every minute to reflect current time changes
         setInterval(function() {
             evaluateTimeSlots(currentDate);

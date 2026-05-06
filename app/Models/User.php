@@ -10,6 +10,9 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Team; // Ensure this matches the file location
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 
 class User extends Authenticatable
 {
@@ -66,4 +69,11 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function currentTeam(): BelongsTo
+    {
+        // If your column in the users table is 'office_department_id', change it here:
+        return $this->belongsTo(Team::class, 'current_team_id'); 
+    }
+
 }

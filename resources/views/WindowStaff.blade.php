@@ -24,100 +24,317 @@
             </div>
             <a href="/" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
         </div>
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button class="btn-gray text-gray-800 px-6 py-2 rounded-lg font-bold hover:bg-gray-300 transition">Sign Out</button>
-        </form>
+        <div class="flex items-center space-x-4">
+            <!-- Window Number Dropdown -->
+            <form action="{{ route('window.change-window') }}" method="POST" class="flex items-center space-x-2">
+                @csrf
+                <label class="text-gray-300 font-bold">Window:</label>
+                <select name="window_number" class="px-3 py-2 rounded-lg text-gray-800 font-bold" onchange="this.form.submit()">
+                    @foreach($availableWindows as $win)
+                        <option value="{{ $win }}" {{ $windowNumber == $win ? 'selected' : '' }}>
+                            Window {{ $win }}
+                        </option>
+                    @endforeach
+                </select>
+            </form>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button class="btn-gray text-gray-800 px-6 py-2 rounded-lg font-bold hover:bg-gray-300 transition">Sign Out</button>
+            </form>
+        </div>
     </div>
 
     <main class="flex-grow flex flex-col p-4">
         <div class="bg-main-frame rounded-lg p-6 shadow-sm flex flex-col flex-grow">
 
             <div class="text-center text-lg font-bold border-b border-gray-300 pb-3 mb-6">
-                Hi, {{ auth()->user()->name ?? 'Heilly' }}!
+                Hi, {{ auth()->user()->name ?? 'Staff' }}!
             </div>
 
+            <!-- Action Buttons -->
             <div class="grid grid-cols-6 gap-6 mb-10 px-4">
-                @if(isset($appointments) && $appointments->isNotEmpty())
-                    @php $currentId = $appointments->first()->id; @endphp
-
-                    <form action="{{ route('window.notify', $currentId) }}" method="POST">
+                <!-- Notify Button - enabled when there's a pending appointment in queue AND no current appointment being served -->
+                @if(isset($pendingAppointments) && $pendingAppointments->isNotEmpty() && (!isset($currentAppointment) || !$currentAppointment))
+                    @php $firstPending = $pendingAppointments->first(); @endphp
+                    <form action="{{ route('window.notify') }}" method="POST">
                         @csrf
+                        <input type="hidden" name="appointment_id" value="{{ $firstPending->id }}">
                         <button type="submit" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Notify</button>
                     </form>
+                @elseif(isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'calling')
+                    <!-- Show Notify as disabled when appointment is already called and waiting -->
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Notify</button>
+                @else
+                    <!-- No pending appointments -->
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Notify</button>
+                @endif
 
-                    <form action="{{ route('window.start', $currentId) }}" method="POST">
+                <!-- Start Service Button - enabled when current appointment is in 'calling' status -->
+                @if(isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'calling')
+                    <form action="{{ route('window.start') }}" method="POST">
                         @csrf
+                        <input type="hidden" name="appointment_id" value="{{ $currentAppointment->id }}">
                         <button type="submit" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Start Service</button>
                     </form>
+                @else
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Start Service</button>
+                @endif
 
-                    <button class="btn-blue h-40 rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Hold Ticket</button>
-                    <button class="btn-blue h-40 rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Resume</button>
-                    <button class="btn-blue h-40 rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Transfer</button>
-
-                    <form action="{{ route('window.end', $currentId) }}" method="POST">
+                <!-- Hold Ticket Button - enabled when current appointment is being served -->
+                @if(isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'serving')
+                    <form action="{{ route('window.hold') }}" method="POST">
                         @csrf
+                        <input type="hidden" name="appointment_id" value="{{ $currentAppointment->id }}">
+                        <button type="submit" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Hold Ticket</button>
+                    </form>
+                @else
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Hold Ticket</button>
+                @endif
+
+                <!-- Resume Button - enabled when current appointment is on hold -->
+                @if(isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'on_hold')
+                    <form action="{{ route('window.resume') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="appointment_id" value="{{ $currentAppointment->id }}">
+                        <button type="submit" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Resume</button>
+                    </form>
+                @else
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Resume</button>
+                @endif
+
+                <!-- Transfer Button - enabled when there's a current appointment being served or on hold -->
+                @if(isset($currentAppointment) && $currentAppointment && in_array($currentAppointment->status, ['serving', 'on_hold']))
+                    <button type="button" onclick="openTransferModal()" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Transfer</button>
+                    
+                    <!-- Transfer Modal -->
+                    <div id="transferModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                            <h3 class="text-2xl font-bold text-center mb-6 text-gray-800">Transfer to Window</h3>
+                            <form action="{{ route('window.transfer') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="appointment_id" value="{{ $currentAppointment->id }}">
+                                <select name="window_number" class="w-full px-4 py-4 rounded-lg text-gray-800 font-bold text-2xl text-center mb-6 border-2 border-gray-300 focus:border-blue-500 focus:outline-none" required>
+                                    <option value="" disabled selected>Select Window</option>
+                                    @foreach($availableWindows as $win)
+                                        @if($win != $windowNumber)
+                                            <option value="{{ $win }}">Window {{ $win }}</option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                                <div class="flex gap-4">
+                                    <button type="submit" class="btn-blue flex-1 py-4 rounded-xl text-xl font-bold hover:bg-blue-800 shadow-md">Confirm Transfer</button>
+                                    <button type="button" onclick="closeTransferModal()" class="bg-gray-300 text-gray-700 flex-1 py-4 rounded-xl text-xl font-bold hover:bg-gray-400 shadow-md">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @else
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Transfer</button>
+                @endif
+
+                <!-- End Service Button - enabled when there's a current appointment being served or on hold -->
+                @if(isset($currentAppointment) && $currentAppointment && in_array($currentAppointment->status, ['serving', 'on_hold']))
+                    <form action="{{ route('window.end') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="appointment_id" value="{{ $currentAppointment->id }}">
                         <button type="submit" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">End</button>
                     </form>
                 @else
-                    @foreach(['Notify', 'Start Service', 'Hold', 'Resume', 'Transfer', 'End'] as $label)
-                        <button disabled class="bg-gray-300 text-gray-500 h-40 rounded-xl text-3xl font-bold cursor-not-allowed">{{ $label }}</button>
-                    @endforeach
+                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">End</button>
                 @endif
             </div>
 
+            <!-- Success/Error Messages -->
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             <div class="grid grid-cols-2 gap-10 px-4 flex-grow">
 
+                <!-- Current Window Display -->
                 <div class="bg-light-blue-zone p-6 rounded-xl shadow-inner flex flex-col">
                     <div class="tcm-navy text-white text-center py-8 text-4xl font-bold mb-6 rounded-t-lg">
-                        Window 1
+                        Window {{ $windowNumber }}
                     </div>
 
-                    @if(isset($appointments) && $appointments->isNotEmpty())
-                        @php $current = $appointments->first(); @endphp
+                    @if(isset($currentAppointment) && $currentAppointment)
                         <div class="ticket-box rounded-full py-4 px-12 flex justify-between items-center mb-8 shadow-sm">
-                            <span class="text-5xl font-bold text-black">{{ str_pad($current->id, 4, '0', STR_PAD_LEFT) }}</span>
-                            <span class="text-4xl font-bold uppercase text-black">{{ $current->applicant->first_name }} {{ $current->applicant->last_name }}</span>
+                            <span class="text-5xl font-bold text-black">{{ str_pad($currentAppointment->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-4xl font-bold uppercase text-black">{{ $currentAppointment->applicant->first_name }} {{ $currentAppointment->applicant->last_name }}</span>
                         </div>
 
                         <div class="bg-gray-200 border border-gray-400 rounded-lg p-8 space-y-6 flex-grow">
-                            <p class="text-center text-xl font-semibold">Appointment ID: <span class="font-bold">TIP-000-{{ $current->id }}</span></p>
-                            <p class="text-center text-xl font-semibold uppercase text-black">Status: <span class="text-blue-700 font-bold">{{ strtoupper($current->status ?? 'Pending') }}</span></p>
+                            <p class="text-center text-xl font-semibold">Appointment ID: <span class="font-bold">{{ $currentAppointment->appoint_no }}</span></p>
+                            <p class="text-center text-xl font-semibold uppercase text-black">Status: <span class="text-blue-700 font-bold">{{ strtoupper($currentAppointment->status ?? 'Pending') }}</span></p>
                             <p class="text-center text-5xl font-bold pt-6 border-t border-gray-400 text-black">
-                                {{ $current->applicant->first_name }} {{ $current->applicant->last_name }}
+                                {{ $currentAppointment->applicant->first_name }} {{ $currentAppointment->applicant->last_name }}
                             </p>
-                            <p class="text-center text-2xl font-semibold">Time: {{ \Carbon\Carbon::parse($current->appointment_time)->format('g:i A') }}</p>
+                            @if($currentAppointment->timeSlot)
+                                <p class="text-center text-2xl font-semibold">Time: {{ \Carbon\Carbon::parse($currentAppointment->timeSlot->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($currentAppointment->timeSlot->end_time)->format('g:i A') }}</p>
+                            @endif
+                            <!-- Transaction Timestamps -->
+                            <div class="border-t border-gray-400 pt-4 space-y-2">
+                                @if($currentAppointment->called_at)
+                                    <p class="text-center text-lg text-gray-600">
+                                        <span class="font-semibold">Called at:</span> {{ $currentAppointment->called_at->format('g:i A') }}
+                                    </p>
+                                @endif
+                                @if($currentAppointment->served_at)
+                                    <p class="text-center text-lg text-gray-600">
+                                        <span class="font-semibold">Service started:</span> {{ $currentAppointment->served_at->format('g:i A') }}
+                                    </p>
+                                @endif
+                                @if($currentAppointment->transaction_completed_at)
+                                    <p class="text-center text-lg text-green-700 font-semibold">
+                                        <span class="font-semibold">Transaction completed:</span> {{ $currentAppointment->transaction_completed_at->format('g:i A') }}
+                                    </p>
+                                @endif
+                            </div>
                         </div>
                     @else
                         <div class="flex-grow flex items-center justify-center text-gray-400 text-5xl font-bold italic">No Active Applicant</div>
                     @endif
                 </div>
 
+                <!-- Next Queue Display -->
                 <div class="bg-light-blue-zone p-6 rounded-xl shadow-inner flex flex-col">
                     <div class="tcm-navy text-white text-center py-8 text-4xl font-bold mb-6 rounded-t-lg">
                         Next Queue
                     </div>
                     <div class="space-y-4 flex-grow">
-                        @if(isset($appointments) && $appointments->count() > 1)
-                            @foreach($appointments->skip(1) as $next)
-                                <div class="ticket-box rounded-md py-4 px-12 flex justify-between items-center shadow-sm">
-                                    <span class="text-4xl font-bold text-black">{{ str_pad($next->id, 4, '0', STR_PAD_LEFT) }}</span>
-                                    <span class="text-4xl font-bold uppercase text-black">{{ substr($next->applicant->first_name, 0, 1) }}. {{ $next->applicant->last_name }}</span>
+                        @if(isset($nextQueue) && $nextQueue->isNotEmpty())
+                            @foreach($nextQueue as $next)
+                                <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm">
+                                    <div class="flex items-center gap-4">
+                                        <span class="text-4xl font-bold text-black">{{ str_pad($next->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                        <span class="text-3xl font-bold uppercase text-black">{{ substr($next->applicant->first_name, 0, 1) }}. {{ $next->applicant->last_name }}</span>
+                                    </div>
+                                    <span class="text-lg text-gray-600">
+                                        Checked in: {{ $next->checked_in_at ? $next->checked_in_at->format('g:i A') : 'N/A' }}
+                                    </span>
                                 </div>
                             @endforeach
                         @else
-                            <div class="text-center py-10 text-gray-500 text-2xl">Queue is empty</div>
+                            <div class="text-center py-10 text-gray-500 text-2xl">No checked-in applicants in queue</div>
                         @endif
                     </div>
                 </div>
             </div>
 
             <div class="flex justify-center space-x-6 mt-10 pb-4">
-                <button class="btn-gray px-12 py-4 rounded-xl font-bold text-xl shadow-md">Open Counter</button>
-                <button class="btn-gray px-12 py-4 rounded-xl font-bold text-xl shadow-md">Close Counter</button>
-                <button class="btn-gray px-12 py-4 rounded-xl font-bold text-xl shadow-md">Break</button>
+                @php
+                    $windowStatus = session('window_status', 'closed');
+                    $windowOpenedAt = session('window_opened_at');
+                    $windowClosedAt = session('window_closed_at');
+                    $windowBreakAt = session('window_break_at');
+                @endphp
+
+                @if($windowStatus === 'open')
+                    <form action="{{ route('window.close-counter') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-red-600 text-white px-12 py-4 rounded-xl font-bold text-xl shadow-md hover:bg-red-700 transition">
+                            Close Counter
+                        </button>
+                    </form>
+                    <button disabled class="bg-gray-300 text-gray-500 px-12 py-4 rounded-xl font-bold text-xl cursor-not-allowed">
+                        Open Counter (Active)
+                    </button>
+                    <form action="{{ route('window.break') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-yellow-500 text-white px-12 py-4 rounded-xl font-bold text-xl shadow-md hover:bg-yellow-600 transition">
+                            Start Break
+                        </button>
+                    </form>
+                @elseif($windowStatus === 'break')
+                    <form action="{{ route('window.open-counter') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-green-600 text-white px-12 py-4 rounded-xl font-bold text-xl shadow-md hover:bg-green-700 transition">
+                            Resume from Break
+                        </button>
+                    </form>
+                    <button disabled class="bg-gray-300 text-gray-500 px-12 py-4 rounded-xl font-bold text-xl cursor-not-allowed">
+                        Break (Active)
+                    </button>
+                    <form action="{{ route('window.close-counter') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-red-600 text-white px-12 py-4 rounded-xl font-bold text-xl shadow-md hover:bg-red-700 transition">
+                            Close Counter
+                        </button>
+                    </form>
+                @else
+                    <form action="{{ route('window.open-counter') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-green-600 text-white px-12 py-4 rounded-xl font-bold text-xl shadow-md hover:bg-green-700 transition">
+                            Open Counter
+                        </button>
+                    </form>
+                    <button disabled class="bg-gray-300 text-gray-500 px-12 py-4 rounded-xl font-bold text-xl cursor-not-allowed">
+                        Close Counter (Inactive)
+                    </button>
+                    <button disabled class="bg-gray-300 text-gray-500 px-12 py-4 rounded-xl font-bold text-xl cursor-not-allowed">
+                        Break (Counter Closed)
+                    </button>
+                @endif
+            </div>
+
+            <!-- Window Status Display -->
+            <div class="text-center mt-4 pb-2">
+                @if($windowStatus === 'open')
+                    <span class="bg-green-100 text-green-800 px-6 py-2 rounded-full font-bold text-lg">
+                        Counter Status: OPEN
+                        @if($windowOpenedAt)
+                            | Since {{ $windowOpenedAt->format('g:i A') }}
+                        @endif
+                    </span>
+                @elseif($windowStatus === 'break')
+                    <span class="bg-yellow-100 text-yellow-800 px-6 py-2 rounded-full font-bold text-lg">
+                        Counter Status: ON BREAK
+                        @if($windowBreakAt)
+                            | Since {{ $windowBreakAt->format('g:i A') }}
+                        @endif
+                    </span>
+                @else
+                    <span class="bg-red-100 text-red-800 px-6 py-2 rounded-full font-bold text-lg">
+                        Counter Status: CLOSED
+                        @if($windowClosedAt)
+                            | Since {{ $windowClosedAt->format('g:i A') }}
+                        @endif
+                    </span>
+                @endif
             </div>
         </div>
     </main>
+
+    <script>
+        function openTransferModal() {
+            document.getElementById('transferModal').classList.remove('hidden');
+        }
+
+        function closeTransferModal() {
+            document.getElementById('transferModal').classList.add('hidden');
+        }
+
+        // Close modal when clicking outside the modal content
+        document.getElementById('transferModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTransferModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeTransferModal();
+            }
+        });
+    </script>
 </body>
 </html>

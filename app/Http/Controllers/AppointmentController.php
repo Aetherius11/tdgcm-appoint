@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\AppointmentConfirmation;
 use App\Models\Applicant;
 use App\Models\Appointment;
 use App\Models\Principal;
 use App\Models\Purpose;
 use App\Models\TimeAvailability;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class AppointmentController extends Controller
 {
@@ -18,7 +20,10 @@ class AppointmentController extends Controller
     {
         $principals = Principal::with('department')->get();
         $purposes = Purpose::all();
-        $timeSlots = TimeAvailability::all();
+        // Get unique time slots (group by start_time and end_time to avoid duplicates)
+        $timeSlots = TimeAvailability::selectRaw('MIN(id) as id, start_time, end_time')
+            ->groupBy('start_time', 'end_time')
+            ->get();
 
         // Get current Philippine time (UTC+8)
         $philippineTime = now()->setTimezone('Asia/Manila');
@@ -95,6 +100,18 @@ class AppointmentController extends Controller
             'status' => 'pending',
         ]);
 
+        // Send confirmation email
+        try {
+            Mail::to($applicant->email)->send(new AppointmentConfirmation($appointment));
+        } catch (\Exception $e) {
+            // Log the error but don't fail the appointment creation
+            \Log::error('Failed to send appointment confirmation email', [
+                'appointment_id' => $appointment->id,
+                'email' => $applicant->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         // Prepare QR code data
         $qrData = json_encode([
             'appointment_no' => $appointment->appoint_no,
@@ -126,9 +143,35 @@ class AppointmentController extends Controller
     /**
      * Display the list of appointments (for admin).
      */
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with(['applicant', 'principal', 'purpose', 'timeSlot'])->latest()->paginate(15);
+        $query = Appointment::with(['applicant', 'principal', 'purpose', 'timeSlot']);
+
+        // Apply filters
+        if ($request->filled('filter_date')) {
+            $query->whereDate('appointment_date', $request->filter_date);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('applicant', function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })->orWhereHas('principal', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })->orWhere('appoint_no', 'like', "%{$search}%");
+        }
+
+        if ($request->filter_type === 'principal' && $request->filled('principal_id')) {
+            $query->where('principal_id', $request->principal_id);
+        }
+
+        if ($request->filter_type === 'purpose' && $request->filled('purpose_id')) {
+            $query->where('purpose_id', $request->purpose_id);
+        }
+
+        $appointments = $query->latest()->paginate(15)->withQueryString();
 
         return view('appointments-table', compact('appointments'));
     }

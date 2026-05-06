@@ -106,7 +106,7 @@
                     <div class="flex gap-2">
                         <input type="text" id="manual_appoint_no" placeholder="e.g., A-2026042901" 
                             class="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none uppercase"
-                            autocomplete="off">
+                            autocomplete="off" autofocus>
                         <button onclick="processManualInput()" 
                             class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
                             Check
@@ -143,21 +143,22 @@
                     <ol class="space-y-2 text-sm text-gray-600">
                         <li class="flex items-start gap-2">
                             <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
-                            <span>Allow camera access when prompted by your browser</span>
+                            <span><strong>Hardware Scanner:</strong> Just scan the QR code! The system automatically captures scanner input - no need to click anywhere.</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-                            <span>Hold the QR code within the blue frame</span>
+                            <span><strong>Camera:</strong> Allow camera access when prompted, then hold the QR code within the blue frame</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-                            <span>Wait for automatic detection (usually instant)</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
-                            <span>Or type the appointment number manually and press Enter</span>
+                            <span><strong>Manual:</strong> Type the appointment number in the field below and press Enter</span>
                         </li>
                     </ol>
+                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-xs text-blue-700">
+                            <strong>💡 Auto-Capture Mode:</strong> Hardware barcode/QR scanners work automatically. Just point and scan - the system will detect the input and process it immediately!
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -185,6 +186,95 @@
     let isProcessing = false;
     let lastScannedCode = '';
     let lastScanTime = 0;
+
+    // Scanner input buffer for hardware scanners
+    let scannerBuffer = '';
+    let scannerTimeout = null;
+    const SCANNER_TIMEOUT_MS = 100; // Time to wait before considering input complete
+
+    // Global keyboard listener for hardware scanners
+    // Hardware scanners typically send input as rapid keyboard events, often ending with Enter
+    document.addEventListener('keydown', function(e) {
+        // If user is typing in the manual input field, let them type normally
+        const manualInput = document.getElementById('manual_appoint_no');
+        if (document.activeElement === manualInput) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processManualInput();
+            }
+            return; // Let the input field handle all other keys
+        }
+        
+        // For hardware scanner input (when not focused on input field)
+        // Only capture alphanumeric characters and hyphens
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            scannerBuffer += e.key.toUpperCase();
+            
+            // Reset timeout - process when input stops
+            clearTimeout(scannerTimeout);
+            scannerTimeout = setTimeout(function() {
+                if (scannerBuffer.length > 0) {
+                    processScannerInput(scannerBuffer);
+                    scannerBuffer = '';
+                }
+            }, SCANNER_TIMEOUT_MS);
+        }
+        // Handle Enter key from scanner
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (scannerBuffer.length > 0) {
+                processScannerInput(scannerBuffer);
+                scannerBuffer = '';
+            }
+        }
+    });
+
+    // Process scanner input (from hardware scanner)
+    function processScannerInput(input) {
+        let appointNo = input.trim().toUpperCase();
+        
+        // Clean up the input - remove any extra spaces or characters
+        appointNo = appointNo.replace(/[^A-Z0-9-]/g, '');
+        
+        console.log('Scanner input received:', appointNo);
+        
+        // Validate format
+        if (!appointNo.match(/^A-\d+$/i)) {
+            showStatusMessage('error', 'Invalid Format', 'Invalid appointment number format: ' + appointNo + '. Expected format: A-XXXXXXXXXX');
+            return;
+        }
+
+        // Create QR data format matching what's in the QR code
+        const qrData = JSON.stringify({ appointment_no: appointNo });
+        processQRCode(qrData);
+    }
+
+    // Keep the manual input field always focused and clear for scanners
+    function keepInputFocused() {
+        const manualInput = document.getElementById('manual_appoint_no');
+        if (manualInput && document.activeElement !== manualInput) {
+            manualInput.focus();
+            manualInput.value = ''; // Clear any previous input
+        }
+    }
+    
+    // Focus input immediately on page load and clear it
+    document.addEventListener('DOMContentLoaded', function() {
+        const manualInput = document.getElementById('manual_appoint_no');
+        if (manualInput) {
+            manualInput.focus();
+            manualInput.value = ''; // Start with empty field
+        }
+    });
+    
+    // Refocus input periodically and on click anywhere, and clear it
+    setInterval(keepInputFocused, 500);
+    document.addEventListener('click', keepInputFocused);
+    
+    // Also clear the input after each successful scan processing
+    const originalProcessQRCode = processQRCode;
+    // We'll add clearing logic in handleScanResult instead
 
     // Initialize QR Scanner with optimized settings
     let html5QrcodeScanner = null;
@@ -403,6 +493,12 @@
 
     // Handle scan result
     function handleScanResult(data) {
+        // Clear the manual input field for the next scan
+        const manualInput = document.getElementById('manual_appoint_no');
+        if (manualInput) {
+            manualInput.value = '';
+        }
+        
         const statusEl = document.getElementById('status_message');
         const iconEl = document.getElementById('status_icon');
         const titleEl = document.getElementById('status_title');

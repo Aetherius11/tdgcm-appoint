@@ -22,9 +22,10 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // Seed principals and time slots
+        // Seed principals, purposes, and time slots
         $this->call([
             PrincipalSeeder::class,
+            PurposeSeeder::class,
             TimeSlotSeeder::class,
         ]);
     }

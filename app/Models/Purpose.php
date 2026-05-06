@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Purpose extends Model
 {
@@ -12,8 +13,9 @@ class Purpose extends Model
         return $this->belongsTo(Principal::class, 'principal_id');
     }
 
-    public function principals()
+    public function timeAvailabilities(): BelongsToMany
     {
-        return $this->belongsToMany(Principal::class);
+        // Ensure the table name here matches exactly what you created in SQL
+        return $this->belongsToMany(TimeAvailability::class, 'purpose_time_availability');
     }
 }

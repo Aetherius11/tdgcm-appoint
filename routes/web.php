@@ -9,6 +9,11 @@ Route::post('/submit-appointment', [AppointmentController::class, 'store'])->nam
 Route::get('/appointment/{appointment}', [AppointmentController::class, 'show'])->name('appointment.show');
 Route::get('/api/time-slots', [AppointmentController::class, 'getAvailableTimeSlots'])->name('api.time-slots');
 
+// Public Queue Display
+Route::get('/queue-display', function () {
+    return view('livewire.queue-display');
+})->name('queue.display');
+
 // Admin appointments list (protected)
 Route::middleware([
     'auth:sanctum',
@@ -23,3 +28,12 @@ Route::middleware([
 });
 
 Route::get('/tv-display', [App\Http\Controllers\TVDisplayController::class, 'index'])->name('tv.display');
+ Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
+
+ use App\Http\Controllers\WindowStaffController;
+
+// Routes for the Window Staff actions
+Route::post('/window/notify/{id}', [WindowStaffController::class, 'notify'])->name('window.notify');
+Route::post('/window/start/{id}', [WindowStaffController::class, 'startService'])->name('window.start');
+Route::post('/window/end/{id}', [WindowStaffController::class, 'endService'])->name('window.end');
+

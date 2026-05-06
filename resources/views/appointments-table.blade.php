@@ -131,7 +131,9 @@
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Purpose</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Time Slot</th>
+                            <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Window</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
+                            <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Transaction History</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Action</th>
                         </tr>
                     </thead>
@@ -170,11 +172,25 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 text-center">
+                                    @if($appointment->window_number)
+                                        <span class="inline-flex items-center justify-center w-8 h-8 bg-[#003366] text-white rounded-md font-bold text-sm">
+                                            {{ $appointment->window_number }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400 text-sm">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-4 text-center">
                                     @php
                                         $statusConfig = [
                                             'approved' => ['bg' => 'bg-green-100', 'text' => 'text-green-700', 'border' => 'border-green-200', 'icon' => '✓'],
                                             'pending' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-700', 'border' => 'border-yellow-200', 'icon' => '◌'],
                                             'cancelled' => ['bg' => 'bg-red-100', 'text' => 'text-red-700', 'border' => 'border-red-200', 'icon' => '✕'],
+                                            'calling' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-700', 'border' => 'border-blue-200', 'icon' => '📢'],
+                                            'serving' => ['bg' => 'bg-green-100', 'text' => 'text-green-700', 'border' => 'border-green-200', 'icon' => '✓'],
+                                            'completed' => ['bg' => 'bg-gray-100', 'text' => 'text-gray-700', 'border' => 'border-gray-200', 'icon' => '✓'],
+                                            'on_hold' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-700', 'border' => 'border-yellow-200', 'icon' => '⏸'],
+                                            'transferred' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-700', 'border' => 'border-purple-200', 'icon' => '↗'],
                                         ];
                                         $config = $statusConfig[$appointment->status] ?? ['bg' => 'bg-gray-100', 'text' => 'text-gray-700', 'border' => 'border-gray-200', 'icon' => '•'];
                                     @endphp
@@ -182,6 +198,31 @@
                                         <span class="text-xs">{{ $config['icon'] }}</span>
                                         {{ $appointment->status }}
                                     </span>
+                                </td>
+                                <td class="px-5 py-4 text-center">
+                                    <div class="text-xs text-gray-600 space-y-1">
+                                        @if($appointment->called_at)
+                                            <div class="flex items-center justify-center gap-1">
+                                                <span class="text-blue-600">📢</span>
+                                                <span>{{ $appointment->called_at->format('g:i A') }}</span>
+                                            </div>
+                                        @endif
+                                        @if($appointment->served_at)
+                                            <div class="flex items-center justify-center gap-1">
+                                                <span class="text-green-600">▶</span>
+                                                <span>{{ $appointment->served_at->format('g:i A') }}</span>
+                                            </div>
+                                        @endif
+                                        @if($appointment->transaction_completed_at)
+                                            <div class="flex items-center justify-center gap-1">
+                                                <span class="text-gray-600">✓</span>
+                                                <span>{{ $appointment->transaction_completed_at->format('g:i A') }}</span>
+                                            </div>
+                                        @endif
+                                        @if(!$appointment->called_at && !$appointment->served_at && !$appointment->transaction_completed_at)
+                                            <span class="text-gray-400">No activity</span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-5 py-4 text-center">
                                     <a href="{{ route('appointment.show', $appointment) }}" 
@@ -193,7 +234,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-5 py-16 text-center">
+                                <td colspan="10" class="px-5 py-16 text-center">
                                     <div class="flex flex-col items-center gap-3">
                                         <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                         <p class="text-gray-500 text-sm">No appointments found for the selected filters.</p>

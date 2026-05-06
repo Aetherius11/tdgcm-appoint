@@ -12,15 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            // Adds the missing column after the 'status' column
-            $table->timestamp('checked_in_at')->nullable()->after('status');
+            // Add timestamp for when the transaction was completed at the window
+            $table->timestamp('transaction_completed_at')->nullable()->after('served_at');
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn('checked_in_at');
+            $table->dropColumn('transaction_completed_at');
         });
     }
 };

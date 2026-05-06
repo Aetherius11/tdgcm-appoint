@@ -242,6 +242,48 @@ class AppointmentController extends Controller
 
             // Check if already checked in
             if ($appointment->checked_in_at) {
+                // Build transaction history with durations
+                $transactionHistory = [];
+                
+                if ($appointment->called_at) {
+                    $calledAt = $appointment->called_at;
+                    $servedAt = $appointment->served_at;
+                    $completedAt = $appointment->transaction_completed_at;
+                    
+                    // Calculate waiting time (called to served)
+                    $waitingDuration = $servedAt ? $calledAt->diff($servedAt)->format('%h:%i') : null;
+                    
+                    // Calculate service duration (served to completed)
+                    $serviceDuration = null;
+                    if ($servedAt && $completedAt) {
+                        $serviceDuration = $servedAt->diff($completedAt)->format('%h:%i');
+                    } elseif ($servedAt && $appointment->status === 'serving') {
+                        $now = \Carbon\Carbon::now();
+                        $serviceDuration = $servedAt->diff($now)->format('%h:%i') . ' (ongoing)';
+                    }
+                    
+                    // Calculate total duration at window
+                    $totalDuration = null;
+                    if ($completedAt) {
+                        $totalDuration = $calledAt->diff($completedAt)->format('%h:%i');
+                    } elseif ($appointment->status !== 'completed') {
+                        $now = \Carbon\Carbon::now();
+                        $totalDuration = $calledAt->diff($now)->format('%h:%i') . ' (ongoing)';
+                    }
+                    
+                    $transactionHistory = [
+                        'window_number' => $appointment->window_number,
+                        'counter_number' => $appointment->counter_number,
+                        'status' => ucfirst($appointment->status),
+                        'called_at' => $calledAt->format('h:i A'),
+                        'served_at' => $servedAt ? $servedAt->format('h:i A') : null,
+                        'completed_at' => $completedAt ? $completedAt->format('h:i A') : null,
+                        'waiting_time' => $waitingDuration,
+                        'service_duration' => $serviceDuration,
+                        'total_duration' => $totalDuration,
+                    ];
+                }
+                
                 return response()->json([
                     'success' => false,
                     'status' => 'already_checked_in',
@@ -253,7 +295,8 @@ class AppointmentController extends Controller
                         'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
                         'date' => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
                         'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
-                        'checked_in_at' => $appointment->checked_in_at->format('M d, Y h:i A'),
+                        'checked_in_at' => $appointment->checked_in_at->format('h:i A'),
+                        'transaction_history' => $transactionHistory,
                     ],
                 ]);
             }

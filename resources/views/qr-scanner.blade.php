@@ -132,6 +132,20 @@
                                     <div><span class="text-gray-500">Date:</span> <span id="detail_date" class="font-semibold"></span></div>
                                     <div><span class="text-gray-500">Time Slot:</span> <span id="detail_time" class="font-semibold"></span></div>
                                 </div>
+                                <!-- Transaction History Section -->
+                                <div id="transaction_history_section" class="mt-4 pt-4 border-t border-gray-300 hidden">
+                                    <h4 class="font-bold text-gray-700 mb-3 text-sm uppercase">Transaction History</h4>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div><span class="text-gray-500">Window:</span> <span id="tx_window" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Status:</span> <span id="tx_status" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Called at:</span> <span id="tx_called_at" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Served at:</span> <span id="tx_served_at" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Completed at:</span> <span id="tx_completed_at" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Waiting time:</span> <span id="tx_waiting_time" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Service duration:</span> <span id="tx_service_duration" class="font-semibold"></span></div>
+                                        <div><span class="text-gray-500">Total duration:</span> <span id="tx_total_duration" class="font-semibold text-blue-600"></span></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -595,6 +609,23 @@
         document.getElementById('detail_purpose').textContent = appointment.purpose;
         document.getElementById('detail_date').textContent = appointment.date;
         document.getElementById('detail_time').textContent = appointment.time_slot || 'N/A';
+        
+        // Show transaction history if available
+        const txHistorySection = document.getElementById('transaction_history_section');
+        if (appointment.transaction_history && Object.keys(appointment.transaction_history).length > 0) {
+            txHistorySection.classList.remove('hidden');
+            const tx = appointment.transaction_history;
+            document.getElementById('tx_window').textContent = 'Window ' + (tx.window_number || tx.counter_number || 'N/A');
+            document.getElementById('tx_status').textContent = tx.status || 'N/A';
+            document.getElementById('tx_called_at').textContent = tx.called_at || 'N/A';
+            document.getElementById('tx_served_at').textContent = tx.served_at || 'N/A';
+            document.getElementById('tx_completed_at').textContent = tx.completed_at || 'N/A';
+            document.getElementById('tx_waiting_time').textContent = tx.waiting_time || 'N/A';
+            document.getElementById('tx_service_duration').textContent = tx.service_duration || 'N/A';
+            document.getElementById('tx_total_duration').textContent = tx.total_duration || 'N/A';
+        } else {
+            txHistorySection.classList.add('hidden');
+        }
     }
 
     function addToRecentScans(data, type) {

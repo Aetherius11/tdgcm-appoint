@@ -17,19 +17,21 @@ class Appointment extends Model
         'time_slot_id',
         'status',
         'counter_number',
+        'window_number',
         'checked_in_at',
-        'remarks',
         'called_at',
-    'checked_in_at',
-    'principal_id',
-    'status',        // Add this
-    'window_number', // Add this
-    'served_at',
+        'served_at',
+        'served_by_user_id',
+        'transaction_completed_at',
+        'remarks',
     ];
 
     protected $casts = [
         'checked_in_at' => 'datetime',
         'appointment_date' => 'date',
+        'called_at' => 'datetime',
+        'served_at' => 'datetime',
+        'transaction_completed_at' => 'datetime',
     ];
 
     // Boot method to generate unique appointment number
@@ -72,5 +74,11 @@ class Appointment extends Model
     public function timeSlot(): BelongsTo
     {
         return $this->belongsTo(TimeAvailability::class, 'time_slot_id');
+    }
+
+    // 6. Define the connection to the User who served the appointment
+    public function servedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'served_by_user_id');
     }
 }

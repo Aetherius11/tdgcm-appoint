@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Section;
 
 class UserResource extends Resource
 {
@@ -28,29 +29,38 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
+                Forms\Components\TextInput::make('name')->required(),
+                Forms\Components\TextInput::make('email')->email()->required(),
+                
+                // Combining Two-Factor fields into one section
+                Section::make('Two-Factor Authentication')
+                    ->description('Manage security secrets and recovery codes')
+                    ->schema([
+                        Forms\Components\Textarea::make('two_factor_secret')
+                            ->label('Secret Key')
+                            ->rows(2),
+                        Forms\Components\Textarea::make('two_factor_recovery_codes')
+                            ->label('Recovery Codes')
+                            ->rows(3),
+                    ])->columns(1),
+
+                Forms\Components\DateTimePicker::make('two_factor_confirmed_at'),
+
+                // Changing "Current Team ID" to "Office Department"
+                // In app/Filament/Resources/UserResource.php
+
+                Forms\Components\Select::make('current_team_id') // Use the ACTUAL database column name
+                    ->label('Office Department')                // Use the UI label you want
+                    ->relationship('currentTeam', 'name')        // Ensure this matches your User model function
+                    ->preload()
+                    ->searchable(),
+
+                Forms\Components\TextInput::make('profile_photo_path'),
                 Forms\Components\DateTimePicker::make('email_verified_at'),
                 Forms\Components\TextInput::make('password')
                     ->password()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('two_factor_secret')
-                    ->columnSpanFull(),
-                Forms\Components\Textarea::make('two_factor_recovery_codes')
-                    ->columnSpanFull(),
-                Forms\Components\DateTimePicker::make('two_factor_confirmed_at'),
-                Forms\Components\TextInput::make('current_team_id')
-                    ->numeric()
-                    ->default(null),
-                Forms\Components\TextInput::make('profile_photo_path')
-                    ->maxLength(2048)
-                    ->default(null),
+                    ->required(fn (string $context): bool => $context === 'create')
+                    ->visible(fn (string $context): bool => $context === 'create'),
             ]);
     }
 
@@ -58,29 +68,22 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
+                // 1. Name Column
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
+
+                // 2. Email Column
                 Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('email_verified_at')
-                    ->dateTime()
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('two_factor_confirmed_at')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('current_team_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('profile_photo_path')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // 3. Office Department (Replaces Current team id)
+                // app/Filament/Resources/UserResource.php
+                Tables\Columns\TextColumn::make('currentTeam.name')
+                    ->label('Office Department')
+                    ->badge()
+                    ->color('info'),
             ])
             ->filters([
                 //

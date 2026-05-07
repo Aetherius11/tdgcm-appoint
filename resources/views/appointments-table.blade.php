@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -33,7 +33,7 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-6 py-8">
-        
+
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -67,7 +67,7 @@
                 Filters
             </h2>
             <form action="{{ url()->current() }}" method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                
+
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-bold text-gray-500 uppercase">Select Date</label>
                     <input type="date" name="filter_date" value="{{ request('filter_date') }}" onchange="this.form.submit()"
@@ -76,13 +76,13 @@
 
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-bold text-gray-500 uppercase">Search</label>
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Name or ID..." 
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Name or ID..."
                         class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
                 </div>
 
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-bold text-gray-500 uppercase">Filter By</label>
-                    <select name="filter_type" id="filter_type" onchange="toggleFilters()" 
+                    <select name="filter_type" id="filter_type" onchange="toggleFilters()"
                         class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
                         <option value="all">All Appointments</option>
                         <option value="principal" {{ request('filter_type') == 'principal' ? 'selected' : '' }}>By Principal</option>
@@ -225,7 +225,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 text-center">
-                                    <a href="{{ route('appointment.show', $appointment) }}" 
+                                    <a href="{{ route('appointment.show', $appointment) }}"
                                        class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-blue-200">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         View

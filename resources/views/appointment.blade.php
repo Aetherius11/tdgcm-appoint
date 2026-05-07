@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <meta charset="utf-8">
@@ -13,24 +12,20 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-[#F4F7FA] text-[#1b1b18] min-h-screen">
+<body class="bg-white text-[#1b1b18] min-h-screen">
 
     <header class="w-full bg-[#111827] text-white shadow-lg">
         <div class="max-w-7xl mx-auto flex justify-between items-center py-6 px-6">
-            <div class="flex items-center gap-2">
-                <div class="bg-white p-1 rounded">
-                    <span class="text-black font-bold text-xs">TCM</span>
-                </div>
-                <h1 class="text-lg font-bold tracking-tight uppercase">EasyQue</h1>
+            <div class="flex items-center gap-3">
+                <img src="{{ asset('Tdg.logo.jpg') }}" alt="TCM Logo" class="h-20 w-auto">
+                <h5 class="text-lg font-bold tracking-tight">TCM EasyQue</h5>
             </div>
-
-            <nav class="hidden lg:flex gap-5 text-[11px] font-bold uppercase tracking-widest text-gray-300">
-
-            </nav>
-
+            <nav class="hidden lg:flex gap-5 text-[11px] font-bold uppercase tracking-widest text-gray-300"></nav>
             <div class="flex items-center gap-4">
                  <button class="text-gray-400 hover:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                  </button>
             </div>
         </div>
@@ -41,20 +36,18 @@
 
             <div class="space-y-8">
                 <div class="text-center lg:text-left">
-                    <h2 class="text-2xl font-extrabold text-gray-44j00 uppercase tracking-wide">
+                    <h2 class="text-2xl font-bold font-instrument text-black-400 tracking-wide">
                         You're just one click away from securing your appointment.
-                            Pick your entry type below and let’s get started!
+                        Pick your entry type below and let’s get started!
                     </h2>
                 </div>
 
-                <div class="flex flex-col md:flex-row gap-8 items-center lg:items-start">
+                <div class="flex flex-col md:flex-row gap-8 items-start">
                     <div class="w-48 shrink-0">
-                        <div class="border-4 border-indigo-900 rounded-full p-6 text-center text-[10px] font-bold text-indigo-900">
-                            <p>DPO/DPS</p>
-                            <p class="text-lg">REGISTERED</p>
-                            <div class="my-2 border-t border-indigo-900"></div>
-                            <p>DATA PRIVACY ACT 2012</p>
-                        </div>
+                        @php
+                            $sealPath = !empty($settings['dpo_seal_path']) ? $settings['dpo_seal_path'] : 'npc-seal.jpg';
+                        @endphp
+                        <img src="{{ asset($sealPath) }}" alt="DPO/DPS Registered Seal" class="w-full h-auto drop-shadow-md">
                     </div>
 
                     <div class="text-sm text-gray-600 leading-relaxed space-y-4">
@@ -75,24 +68,23 @@
             </div>
 
             <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-8">
+                <div class="bg-white p-8">
                     <form action="{{ route('appointment.store') }}" method="POST" class="space-y-5">
-                  @csrf
-
+                        @csrf
 
                         <div class="p-6 bg-white rounded-lg border border-blue-500 space-y-4">
-    <h3 class="text-xl font-bold text-gray-900">Privacy Consent</h3>
+                            <h3 class="text-xl font-bold text-gray-900">Privacy Consent</h3>
+                            <div class="flex gap-3 items-start">
+                                <input type="checkbox" name="consent" id="consent" class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" required>
+                                <label for="consent" class="text-sm font-semibold text-gray-700 leading-relaxed">
+                                    I agree that the personal information I have provided will be collected and processed for documentation purposes in accordance with the Data Privacy Act of 2012 (R.A. 10173 or DPA) and TDGCM Privacy Policy.
+                                </label>
+                            </div>
+                        </div>
 
-    <div class="flex gap-3 items-start">
-        <input type="checkbox" name="consent" id="consent" class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" required>
-        <label for="consent" class="text-sm font-semibold text-gray-700 leading-relaxed">
-            I agree that the personal information I have provided will be collected and processed for documentation purposes in accordance with the Data Privacy Act of 2012 (R.A. 10173 or DPA) and TDGCM Privacy Policy.
-        </label>
-    </div>
-</div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Principal</label>
-                            <select name="principal_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select name="principal_id" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50 disabled:text-gray-400" disabled>
                                 <option value="">Select Principal</option>
                                 @foreach($principals as $principal)
                                     <option value="{{ $principal->id }}">{{ $principal->name }}</option>
@@ -102,7 +94,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Purpose</label>
-                            <select name="purpose_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select name="purpose_id" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50 disabled:text-gray-400" disabled>
                                 <option value="">Select Purpose</option>
                                 @foreach($purposes as $purpose)
                                     <option value="{{ $purpose->id }}">{{ $purpose->purpose_name }}</option>
@@ -112,12 +104,12 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Appointment Date</label>
-                            <input type="text" name="appointment_date" id="appointment_date" placeholder="Select a date" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer" readonly>
+                            <input type="text" name="appointment_date" id="appointment_date" placeholder="Select a date" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer disabled:bg-gray-50 disabled:text-gray-400" readonly disabled>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Time</label>
-                            <select name="time_slot_id" id="time_slot_select" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select name="time_slot_id" id="time_slot_select" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50 disabled:text-gray-400" disabled>
                                 <option value="">Select a time</option>
                                 @foreach($timeSlots as $slot)
                                     <option value="{{ $slot->id }}" data-start="{{ $slot->start_time }}" data-end="{{ $slot->end_time }}">{{ $slot->start_time }} - {{ $slot->end_time }}</option>
@@ -129,31 +121,30 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">First Name</label>
-                                <input type="text" name="first_name" placeholder="First Name" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                                <input type="text" name="first_name" placeholder="First Name" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm outline-none disabled:bg-gray-50" disabled>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Last Name</label>
-                                <input type="text" name="last_name" placeholder="Last Name" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                                <input type="text" name="last_name" placeholder="Last Name" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm outline-none disabled:bg-gray-50" disabled>
                             </div>
                         </div>
+
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
-                            <input type="email" name="email" placeholder="email@example.com" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                            <input type="email" name="email" placeholder="email@example.com" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm outline-none disabled:bg-gray-50" disabled>
                         </div>
-                    </div>
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Number</label>
-                            <input type="text" name="phone" placeholder="Contact Number" class="w-full border-gray-200 border rounded-lg p-3 text-sm outline-none">
+                            <input type="text" name="phone" placeholder="Contact Number" class="form-field w-full border-gray-200 border rounded-lg p-3 text-sm outline-none disabled:bg-gray-50" disabled>
                         </div>
 
-                        <button type="submit" class="w-full bg-[#3b82f6] hover:bg-blue-700 text-white font-bold py-4 rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-[0.98]">
+                        <button type="submit" id="submitBtn" class="w-full bg-[#3b82f6] hover:bg-blue-700 text-white font-bold py-4 rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                             Submit
                         </button>
                     </form>
                 </div>
             </div>
-
         </div>
     </main>
 
@@ -161,112 +152,73 @@
         © 2026 Appointment System. All rights reserved.
     </footer>
 
+    <script>
+        const currentPhilippineTime = '{{ $currentTime }}';
+        const currentDate = '{{ $currentDate }}';
 
+        // Consent Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const consentCheckbox = document.getElementById('consent');
+            const formFields = document.querySelectorAll('.form-field');
+            const submitBtn = document.getElementById('submitBtn');
 
+            consentCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                formFields.forEach(field => {
+                    field.disabled = !isChecked;
+                });
+                submitBtn.disabled = !isChecked;
+            });
 
-        <script>
-    // Current Philippine time passed from controller
-    const currentPhilippineTime = '{{ $currentTime }}';
-    const currentDate = '{{ $currentDate }}';
+            evaluateTimeSlots(currentDate);
+            setInterval(() => evaluateTimeSlots(currentDate), 60000);
+        });
 
-    flatpickr("#appointment_date", {
-        dateFormat: "Y-m-d",
-        minDate: "today",
-        disable: [
-            function(date) {
-                // 0 = Sunday, 5 = Friday, 6 = Saturday
-                return (date.getDay() === 0 || date.getDay() === 5 || date.getDay() === 6);
-            }
-        ],
-        locale: {
-            "firstDayOfWeek": 0 // Monday start
-        },
-        onChange: function(selectedDates, dateStr, instance) {
-            // Re-evaluate time slots when date changes
-            evaluateTimeSlots(dateStr);
+        flatpickr("#appointment_date", {
+            dateFormat: "Y-m-d",
+            minDate: "today",
+            disable: [function(date) { return (date.getDay() === 0 || date.getDay() === 5 || date.getDay() === 6); }],
+            locale: { "firstDayOfWeek": 0 },
+            onChange: function(selectedDates, dateStr) { evaluateTimeSlots(dateStr); }
+        });
+
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
         }
-    });
 
-    // Function to compare time strings (HH:MM format)
-    function timeToMinutes(timeStr) {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        return hours * 60 + minutes;
-    }
+        function evaluateTimeSlots(selectedDate) {
+            const timeSelect = document.getElementById('time_slot_select');
+            const options = timeSelect.querySelectorAll('option');
+            const noteElement = document.getElementById('time_note');
+            const selectedDateObj = new Date(selectedDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            selectedDateObj.setHours(0, 0, 0, 0);
+            const isToday = selectedDateObj.getTime() === today.getTime();
 
-    // Function to evaluate and disable/enable time slots based on current time and selected date
-    function evaluateTimeSlots(selectedDate) {
-        const timeSelect = document.getElementById('time_slot_select');
-        const options = timeSelect.querySelectorAll('option');
-        const noteElement = document.getElementById('time_note');
-
-        // Parse selected date
-        const selectedDateObj = new Date(selectedDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        selectedDateObj.setHours(0, 0, 0, 0);
-
-        const isToday = selectedDateObj.getTime() === today.getTime();
-
-        options.forEach(option => {
-            if (!option.value) return; // Skip the placeholder option
-
-            const endTime = option.getAttribute('data-end');
-            const startTime = option.getAttribute('data-start');
-
-            if (isToday && endTime) {
-                const endMinutes = timeToMinutes(endTime);
-                const currentMinutes = timeToMinutes(currentPhilippineTime);
-
-                // Disable if the time slot has already ended
-                if (endMinutes <= currentMinutes) {
-                    option.disabled = true;
-                    option.style.color = '#9ca3af';
-                    option.style.fontStyle = 'italic';
+            options.forEach(option => {
+                if (!option.value) return;
+                const endTime = option.getAttribute('data-end');
+                if (isToday && endTime) {
+                    if (timeToMinutes(endTime) <= timeToMinutes(currentPhilippineTime)) {
+                        option.disabled = true;
+                        option.style.color = '#9ca3af';
+                    } else {
+                        option.disabled = false;
+                        option.style.color = '';
+                    }
                 } else {
                     option.disabled = false;
                     option.style.color = '';
-                    option.style.fontStyle = '';
                 }
-            } else {
-                // For future dates, all slots are available
-                option.disabled = false;
-                option.style.color = '';
-                option.style.fontStyle = '';
-            }
-        });
+            });
 
-        // Update note
-        if (isToday) {
-            noteElement.textContent = 'Greyed out slots are no longer available for today.';
-        } else if (selectedDate) {
-            noteElement.textContent = 'All time slots are available for the selected date.';
-        } else {
-            noteElement.textContent = '';
+            if (isToday) noteElement.textContent = 'Greyed out slots are no longer available for today.';
+            else if (selectedDate) noteElement.textContent = 'All time slots available.';
+
+            if (timeSelect.value && timeSelect.options[timeSelect.selectedIndex].disabled) timeSelect.value = '';
         }
-
-        // Reset selection if current selection is disabled
-        if (timeSelect.value) {
-            const selectedOption = timeSelect.options[timeSelect.selectedIndex];
-            if (selectedOption.disabled) {
-                timeSelect.value = '';
-            }
-        }
-    }
-
-    // Initialize time slots on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        evaluateTimeSlots(currentDate);
-
-        // Update time slots every minute to reflect current time changes
-        setInterval(function() {
-            evaluateTimeSlots(currentDate);
-        }, 60000); // Check every minute
-    });
-</script>
-
-
-
-
-
+    </script>
 </body>
 </html>

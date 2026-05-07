@@ -46,6 +46,13 @@ class PrincipalResource extends Resource
                     )
                     ->preload()
                     ->required(),
+
+                // This adds the Windows selector next to Purposes
+                Select::make('windows')
+                    ->relationship('windows', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->required(),    
             ]);
     }
 
@@ -53,9 +60,6 @@ class PrincipalResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('department.department_name')
-                    ->label('Office/Company')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Department Name')
                     ->searchable(),
@@ -63,6 +67,11 @@ class PrincipalResource extends Resource
                     ->label('Purposes')
                     ->badge()
                     ->separator(','),
+                Tables\Columns\TextColumn::make('windows.name')
+                    ->label('Windows')
+                    ->badge()
+                    ->color('success') // Green badges
+                    ->separator(','),    
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

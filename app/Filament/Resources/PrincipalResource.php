@@ -3,16 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PrincipalResource\Pages;
-use App\Filament\Resources\PrincipalResource\RelationManagers;
 use App\Models\Principal;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PrincipalResource extends Resource
 {
@@ -20,21 +17,31 @@ class PrincipalResource extends Resource
 
     // This puts the resource into the "System Maintenance" group
     protected static ?string $navigationGroup = 'System Maintenance';
-    
+
     // Use this to change the icon (e.g., a building icon)
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
+
     protected static ?int $navigationSort = 2;
+
+    // Display "Departments" in the admin panel navigation
+    protected static ?string $pluralLabel = 'Departments';
+
+    protected static ?string $navigationLabel = 'Departments';
+
+    protected static ?string $modelLabel = 'Department';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')->required(), 
+                Forms\Components\TextInput::make('name')
+                    ->label('Department Name')
+                    ->required(),
 
-                Forms\Components\Select::make('purposes')
+                Select::make('purposes')
                     ->multiple()
                     ->relationship(
-                        name: 'purposes', 
+                        name: 'purposes',
                         titleAttribute: 'purpose_name' // FIXED: Changed from 'name' to 'purpose_name'
                     )
                     ->preload()
@@ -46,12 +53,12 @@ class PrincipalResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('department.department_name') // Ensure this matches your Department table column
-                ->label('Department')
-                ->sortable(),              
+                Tables\Columns\TextColumn::make('department.department_name')
+                    ->label('Office/Company')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Principal Name')
-                    ->searchable(),                  
+                    ->label('Department Name')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('purposes.purpose_name') // FIXED: Notice 'purpose_name'
                     ->label('Purposes')
                     ->badge()

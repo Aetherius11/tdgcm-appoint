@@ -32,6 +32,7 @@ Route::get('/tv-display', [App\Http\Controllers\TVDisplayController::class, 'ind
 
 // Window Staff routes
 Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
+Route::get('/WindowStaff/transaction-history', [App\Http\Controllers\WindowStaffController::class, 'transactionHistory'])->name('window.transaction-history');
 
 use App\Http\Controllers\WindowStaffController;
 

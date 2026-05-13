@@ -26,27 +26,141 @@ class WindowStaffController extends Controller
             ->get();
 
         // Get the current appointment being served at the assigned window
+        // NOTE: Do NOT include 'on_hold' - held tickets are in the queue, not the current appointment
         $currentAppointment = Appointment::whereDate('appointment_date', now()->toDateString())
             ->where('window_number', $windowNumber)
-            ->whereIn('status', ['calling', 'serving', 'on_hold'])
+            ->whereIn('status', ['calling', 'serving'])
             ->with(['applicant', 'purpose', 'timeSlot'])
             ->latest('updated_at')
             ->first();
 
-        // Get next appointments in queue (only those who have checked in, not yet called, not assigned to any window)
-        $nextQueue = Appointment::whereDate('appointment_date', now()->toDateString())
-            ->whereIn('status', ['pending', 'approved'])
+        // Get next appointments in queue (includes transferred appointments and held tickets)
+        // Include appointments regardless of appointment_date if they have been override checked-in
+        $nextQueue = Appointment::whereIn('status', ['pending', 'approved', 'on_hold'])
             ->whereNotNull('checked_in_at') // Only show appointments that have checked in with guard
-            ->whereNull('window_number')
+            ->where(function($q) {
+                // Today's appointments OR override check-ins (different date with guard override remarks)
+                $q->whereDate('appointment_date', now()->toDateString())
+                   ->orWhere(function($q2) {
+                       $q2->whereNotNull('remarks')
+                          ->where('remarks', 'like', 'Guard override:%');
+                   });
+            })
+            ->where(function($q) use ($windowNumber) {
+                $q->whereNull('window_number')  // General queue
+                  ->orWhere('window_number', $windowNumber);  // Transferred or held tickets for this window
+            })
             ->with(['applicant', 'purpose', 'timeSlot'])
-            ->orderBy('checked_in_at', 'asc') // Order by check-in time
+            ->orderByRaw('CASE WHEN window_number = ? THEN 0 ELSE 1 END', [$windowNumber])  // Transferred/Held first
+            ->orderBy('checked_in_at', 'asc')  // Then by check-in time
             ->take(5)
             ->get();
+
+        // Get today's completed transactions for this window (for summary box)
+        $todayCompleted = Appointment::where('window_number', $windowNumber)
+            ->where('status', 'completed')
+            ->whereDate('transaction_completed_at', now()->toDateString())
+            ->orderBy('transaction_completed_at', 'desc')
+            ->take(5)
+            ->get();
+
+        // Calculate today's stats
+        $todayTotal = Appointment::where('window_number', $windowNumber)
+            ->where('status', 'completed')
+            ->whereDate('transaction_completed_at', now()->toDateString())
+            ->count();
 
         // Generate list of available windows (1-12)
         $availableWindows = range(1, 12);
 
-        return view('WindowStaff', compact('pendingAppointments', 'currentAppointment', 'nextQueue', 'windowNumber', 'availableWindows'));
+        return view('WindowStaff', compact('pendingAppointments', 'currentAppointment', 'nextQueue', 'windowNumber', 'availableWindows', 'todayCompleted', 'todayTotal'));
+    }
+
+    /**
+     * Display the transaction history for the window staff
+     */
+    public function transactionHistory(Request $request)
+    {
+        $windowNumber = session('staff_window_number', 1);
+        $filterDate = $request->input('filter_date', now()->toDateString());
+        $search = $request->input('search', '');
+
+        // Get all completed appointments for this window
+        $query = Appointment::where('window_number', $windowNumber)
+            ->where('status', 'completed')
+            ->with(['applicant', 'purpose', 'timeSlot']);
+
+        // Apply date filter
+        if ($filterDate) {
+            $query->whereDate('transaction_completed_at', $filterDate);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $query->whereHas('applicant', function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orWhere('appoint_no', 'like', "%{$search}%");
+        }
+
+        $appointments = $query->orderBy('transaction_completed_at', 'desc')->paginate(20);
+
+        // Calculate statistics
+        $stats = $this->calculateStats($windowNumber, $filterDate);
+
+        return view('transaction-history', compact('appointments', 'windowNumber', 'stats', 'filterDate', 'search'));
+    }
+
+    /**
+     * Calculate statistics for the transaction history
+     */
+    private function calculateStats($windowNumber, $filterDate = null)
+    {
+        $query = Appointment::where('window_number', $windowNumber)
+            ->where('status', 'completed');
+
+        if ($filterDate) {
+            $query->whereDate('transaction_completed_at', $filterDate);
+        }
+
+        $completed = $query->count();
+
+        // Calculate average service time
+        $appointments = $query->get();
+        $totalServiceTime = 0;
+        $countWithTimes = 0;
+
+        foreach ($appointments as $apt) {
+            if ($apt->served_at && $apt->transaction_completed_at) {
+                $serviceTime = $apt->served_at->diffInSeconds($apt->transaction_completed_at);
+                $totalServiceTime += $serviceTime;
+                $countWithTimes++;
+            }
+        }
+
+        $avgServiceTime = $countWithTimes > 0 ? $totalServiceTime / $countWithTimes : 0;
+
+        // Calculate average wait time (from called_at to served_at)
+        $totalWaitTime = 0;
+        $countWithWait = 0;
+
+        foreach ($appointments as $apt) {
+            if ($apt->called_at && $apt->served_at) {
+                $waitTime = $apt->called_at->diffInSeconds($apt->served_at);
+                $totalWaitTime += $waitTime;
+                $countWithWait++;
+            }
+        }
+
+        $avgWaitTime = $countWithWait > 0 ? $totalWaitTime / $countWithWait : 0;
+
+        return [
+            'total_completed' => $completed,
+            'avg_service_time' => $avgServiceTime,
+            'avg_wait_time' => $avgWaitTime,
+        ];
     }
 
     /**

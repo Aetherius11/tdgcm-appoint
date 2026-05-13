@@ -23,6 +23,8 @@
                 <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
             <a href="/" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
+            <a href="{{ route('Window.Staff') }}" class="text-gray-300 hover:text-white font-bold transition text-lg">Counter</a>
+            <a href="{{ route('window.transaction-history') }}" class="text-gray-300 hover:text-white font-bold transition text-lg">Transaction History</a>
         </div>
         <div class="flex items-center space-x-4">
             <!-- Window Number Dropdown -->
@@ -198,6 +200,15 @@
                                     </p>
                                 @endif
                             </div>
+                            <!-- Live Timer for Ongoing Transaction -->
+                            @if($currentAppointment->served_at && !$currentAppointment->transaction_completed_at)
+                                <div class="border-t border-gray-400 pt-4 mt-4">
+                                    <p class="text-center text-lg text-blue-700 font-semibold">
+                                        <span class="font-semibold">Service Duration:</span> 
+                                        <span id="live-timer" class="text-2xl font-mono text-blue-800" data-start="{{ $currentAppointment->served_at->toIso8601String() }}">00:00:00</span>
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                     @else
                         <div class="flex-grow flex items-center justify-center text-gray-400 text-5xl font-bold italic">No Active Applicant</div>
@@ -212,20 +223,99 @@
                     <div class="space-y-4 flex-grow">
                         @if(isset($nextQueue) && $nextQueue->isNotEmpty())
                             @foreach($nextQueue as $next)
-                                <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm">
+                                <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm {{ $next->status === 'on_hold' ? 'border-2 border-orange-400 bg-orange-50' : '' }}">
                                     <div class="flex items-center gap-4">
                                         <span class="text-4xl font-bold text-black">{{ str_pad($next->id, 4, '0', STR_PAD_LEFT) }}</span>
                                         <span class="text-3xl font-bold uppercase text-black">{{ substr($next->applicant->first_name, 0, 1) }}. {{ $next->applicant->last_name }}</span>
+                                        @if($next->status === 'on_hold')
+                                            <span class="text-xs bg-orange-500 text-white px-2 py-1 rounded font-bold">Held</span>
+                                        @endif
                                     </div>
-                                    <span class="text-lg text-gray-600">
-                                        Checked in: {{ $next->checked_in_at ? $next->checked_in_at->format('g:i A') : 'N/A' }}
-                                    </span>
+                                    <div class="flex items-center gap-4">
+                                        <span class="text-lg text-gray-600">
+                                            Checked in: {{ $next->checked_in_at ? $next->checked_in_at->format('g:i A') : 'N/A' }}
+                                        </span>
+                                        @if($next->status === 'on_hold')
+                                            <form action="{{ route('window.resume') }}" method="POST" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="appointment_id" value="{{ $next->id }}">
+                                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-3 py-2 rounded transition">
+                                                    Resume
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </div>
                             @endforeach
                         @else
                             <div class="text-center py-10 text-gray-500 text-2xl">No checked-in applicants in queue</div>
                         @endif
                     </div>
+                </div>
+            </div>
+
+            <!-- Today's Transaction Summary -->
+            <div class="mt-6 px-4">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Today's Transactions</h3>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold text-sm">
+                            Total: {{ $todayTotal ?? 0 }}
+                        </span>
+                    </div>
+                    @if(isset($todayCompleted) && $todayCompleted->count() > 0)
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-200">
+                                        <th class="text-left py-2 px-3 font-semibold text-gray-600">Ticket</th>
+                                        <th class="text-left py-2 px-3 font-semibold text-gray-600">Applicant</th>
+                                        <th class="text-center py-2 px-3 font-semibold text-gray-600">Served At</th>
+                                        <th class="text-center py-2 px-3 font-semibold text-gray-600">Completed At</th>
+                                        <th class="text-center py-2 px-3 font-semibold text-gray-600">Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($todayCompleted as $completed)
+                                        <tr class="border-b border-gray-100 hover:bg-blue-50/30 transition">
+                                            <td class="py-2 px-3 font-semibold text-blue-600">{{ $completed->appoint_no }}</td>
+                                            <td class="py-2 px-3 text-gray-800">
+                                                {{ $completed->applicant->first_name }} {{ $completed->applicant->last_name }}
+                                            </td>
+                                            <td class="py-2 px-3 text-center text-gray-600">
+                                                {{ $completed->served_at ? $completed->served_at->format('g:i A') : '--' }}
+                                            </td>
+                                            <td class="py-2 px-3 text-center text-gray-600">
+                                                {{ $completed->transaction_completed_at ? $completed->transaction_completed_at->format('g:i A') : '--' }}
+                                            </td>
+                                            <td class="py-2 px-3 text-center">
+                                                @if($completed->served_at && $completed->transaction_completed_at)
+                                                    @php
+                                                        $duration = $completed->served_at->diffInSeconds($completed->transaction_completed_at);
+                                                    @endphp
+                                                    <span class="text-green-700 font-medium">{{ gmdate('i:s', $duration) }}</span>
+                                                @else
+                                                    <span class="text-gray-400">--</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        @if($todayTotal > 5)
+                            <div class="text-center mt-3">
+                                <a href="{{ route('window.transaction-history', ['filter_date' => now()->toDateString()]) }}" 
+                                   class="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline">
+                                    View all {{ $todayTotal }} transactions →
+                                </a>
+                            </div>
+                        @endif
+                    @else
+                        <div class="text-center py-6 text-gray-500">
+                            No transactions completed today yet.
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -335,6 +425,29 @@
                 closeTransferModal();
             }
         });
+
+        // Live Timer for ongoing transaction
+        function updateLiveTimer() {
+            const timerElement = document.getElementById('live-timer');
+            if (!timerElement) return;
+
+            const startTime = new Date(timerElement.getAttribute('data-start'));
+            const now = new Date();
+            const diff = Math.floor((now - startTime) / 1000);
+
+            const hours = Math.floor(diff / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            const seconds = diff % 60;
+
+            timerElement.textContent = 
+                String(hours).padStart(2, '0') + ':' + 
+                String(minutes).padStart(2, '0') + ':' + 
+                String(seconds).padStart(2, '0');
+        }
+
+        // Update timer every second
+        setInterval(updateLiveTimer, 1000);
+        updateLiveTimer(); // Initial call
     </script>
 </body>
 </html>

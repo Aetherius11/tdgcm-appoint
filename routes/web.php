@@ -32,7 +32,7 @@ Route::middleware([
 Route::get('/tv-display', [TVDisplayController::class, 'index'])->name('tv.display');
 
 // Window Staff routes
-Route::get('/WindowStaff', [WindowStaffController::class, 'index'])->name('Window.Staff');
+Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
 
 use App\Http\Controllers\TVDisplayController;
 use App\Http\Controllers\WindowStaffController;
@@ -48,6 +48,8 @@ Route::post('/window/open-counter', [WindowStaffController::class, 'openCounter'
 Route::post('/window/close-counter', [WindowStaffController::class, 'closeCounter'])->name('window.close-counter');
 Route::post('/window/break', [WindowStaffController::class, 'startBreak'])->name('window.break');
 Route::post('/window/change-window', [WindowStaffController::class, 'changeWindow'])->name('window.change-window');
+Route::get('/window/transaction-history', [WindowStaffController::class, 'transactionHistory'])->name('window.transaction-history');
+
 
 // API routes for real-time data (used by TV display)
 Route::get('/api/window-status', [WindowStaffController::class, 'getWindowStatus'])->name('api.window-status');

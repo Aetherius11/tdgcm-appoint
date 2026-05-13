@@ -91,9 +91,9 @@
     </div>
 </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Principal</label>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Department</label>
                             <select name="principal_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                                <option value="">Select Principal</option>
+                                <option value="">Select Department</option>
                                 @foreach($principals as $principal)
                                     <option value="{{ $principal->id }}">{{ $principal->name }}</option>
                                 @endforeach

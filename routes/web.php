@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\UserInvitationController;
 use Illuminate\Support\Facades\Route;
 
 // Public appointment routes
@@ -28,11 +29,12 @@ Route::middleware([
 });
 
 // TV Display routes
-Route::get('/tv-display', [App\Http\Controllers\TVDisplayController::class, 'index'])->name('tv.display');
+Route::get('/tv-display', [TVDisplayController::class, 'index'])->name('tv.display');
 
 // Window Staff routes
-Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
+Route::get('/WindowStaff', [WindowStaffController::class, 'index'])->name('Window.Staff');
 
+use App\Http\Controllers\TVDisplayController;
 use App\Http\Controllers\WindowStaffController;
 
 // Routes for the Window Staff actions (form-based)
@@ -51,3 +53,12 @@ Route::post('/window/change-window', [WindowStaffController::class, 'changeWindo
 Route::get('/api/window-status', [WindowStaffController::class, 'getWindowStatus'])->name('api.window-status');
 Route::get('/api/queue-data', [WindowStaffController::class, 'getQueueData'])->name('api.queue-data');
 
+// User Invitation routes (public, token-based authentication)
+Route::get('/invite/{token}', [UserInvitationController::class, 'show'])->name('invitations.show');
+Route::post('/invite/{token}', [UserInvitationController::class, 'accept'])->name('invitations.accept');
+
+// 2FA Setup routes (authenticated users who just accepted invitation)
+Route::middleware(['auth:sanctum', config('jetstream.auth_session')])->group(function () {
+    Route::get('/invite/2fa-setup', [UserInvitationController::class, 'show2FASetup'])->name('invitations.2fa-setup');
+    Route::post('/invite/2fa-confirm', [UserInvitationController::class, 'confirm2FA'])->name('invitations.2fa-confirm');
+});

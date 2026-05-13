@@ -3,16 +3,15 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
+use App\Models\Team;
 use App\Models\User;
+use App\Models\UserInvitation;
 use Filament\Forms;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Section;
 
 class UserResource extends Resource
 {
@@ -20,9 +19,10 @@ class UserResource extends Resource
 
     // This puts the resource into the "User Management" group
     protected static ?string $navigationGroup = 'User Management';
-    
+
     // Use this to change the icon (e.g., a building icon)
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -31,7 +31,7 @@ class UserResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')->required(),
                 Forms\Components\TextInput::make('email')->email()->required(),
-                
+
                 // Combining Two-Factor fields into one section
                 Section::make('Two-Factor Authentication')
                     ->description('Manage security secrets and recovery codes')
@@ -47,20 +47,14 @@ class UserResource extends Resource
                 Forms\Components\DateTimePicker::make('two_factor_confirmed_at'),
 
                 // Changing "Current Team ID" to "Office Department"
-                // In app/Filament/Resources/UserResource.php
-
-                Forms\Components\Select::make('current_team_id') // Use the ACTUAL database column name
-                    ->label('Office Department')                // Use the UI label you want
-                    ->relationship('currentTeam', 'name')        // Ensure this matches your User model function
+                Forms\Components\Select::make('current_team_id')
+                    ->label('Office Department')
+                    ->relationship('currentTeam', 'name')
                     ->preload()
                     ->searchable(),
 
                 Forms\Components\TextInput::make('profile_photo_path'),
                 Forms\Components\DateTimePicker::make('email_verified_at'),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->required(fn (string $context): bool => $context === 'create')
-                    ->visible(fn (string $context): bool => $context === 'create'),
             ]);
     }
 
@@ -79,7 +73,6 @@ class UserResource extends Resource
                     ->sortable(),
 
                 // 3. Office Department (Replaces Current team id)
-                // app/Filament/Resources/UserResource.php
                 Tables\Columns\TextColumn::make('currentTeam.name')
                     ->label('Office Department')
                     ->badge()
@@ -109,8 +102,15 @@ class UserResource extends Resource
     {
         return [
             'index' => Pages\ListUsers::route('/'),
-            'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Get the URL for accepting an invitation.
+     */
+    public static function getInvitationUrl(UserInvitation $invitation): string
+    {
+        return url('/invite/'.$invitation->token);
     }
 }

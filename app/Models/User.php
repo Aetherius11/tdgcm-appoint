@@ -70,10 +70,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function currentTeam(): BelongsTo
+    public function team(): BelongsTo
     {
-        // If your column in the users table is 'office_department_id', change it here:
-        return $this->belongsTo(Team::class, 'current_team_id'); 
+        // If your departments are stored in the 'principals' table
+        return $this->belongsTo(Principal::class, 'current_team_id');
     }
-
 }

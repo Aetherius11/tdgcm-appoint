@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 
 class UserResource extends Resource
 {
@@ -20,7 +21,7 @@ class UserResource extends Resource
 
     // This puts the resource into the "User Management" group
     protected static ?string $navigationGroup = 'User Management';
-    
+
     // Use this to change the icon (e.g., a building icon)
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 1;
@@ -31,7 +32,7 @@ class UserResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')->required(),
                 Forms\Components\TextInput::make('email')->email()->required(),
-                
+
                 // Combining Two-Factor fields into one section
                 Section::make('Two-Factor Authentication')
                     ->description('Manage security secrets and recovery codes')
@@ -113,4 +114,6 @@ class UserResource extends Resource
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
     }
+
+
 }

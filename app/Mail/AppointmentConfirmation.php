@@ -16,6 +16,9 @@ class AppointmentConfirmation extends Mailable
 
     /**
      * Create a new message instance.
+     *
+     * By using 'public', this variable is automatically
+     * available in your Blade view.
      */
     public function __construct(
         public Appointment $appointment
@@ -27,7 +30,7 @@ class AppointmentConfirmation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Appointment Confirmation - ' . $this->appointment->appoint_no,
+            subject: 'Booking Confirmed: ' . $this->appointment->appoint_no,
         );
     }
 
@@ -38,6 +41,11 @@ class AppointmentConfirmation extends Mailable
     {
         return new Content(
             view: 'emails.appointment-confirmation',
+            // You don't strictly need 'with' because $appointment is public,
+            // but adding it here is a safe best practice.
+            with: [
+                'appointment' => $this->appointment,
+            ],
         );
     }
 

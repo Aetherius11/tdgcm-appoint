@@ -11,9 +11,9 @@
 <body class="bg-gray-200 font-['Instrument_Sans']">
 
     <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;">
-        
+
         <div class="bg-white rounded-xl shadow-2xl overflow-hidden w-full max-w-[420px]" style="background: white; border-radius: 12px; overflow: hidden; width: 100%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-            
+
             <div class="p-6 text-center" style="background-color: #28a745; color: white;">
                 <div style="display: flex; justify-content: center; margin-bottom: 12px;">
                     <div style="background: white; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
@@ -31,10 +31,10 @@
                     <p style="font-size: 12px; font-weight: bold; color: #6c757d; margin-bottom: 8px; text-transform: uppercase;">
                         Appointment ID: <span style="color: #1b1b18; font-family: monospace;">{{ $appointment->appoint_no }}</span>
                     </p>
-                    
+
                     <div style="display: flex; justify-content: center; margin: 15px 0;">
                         <div style="background: white; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px;">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $appointment->appoint_no }}&color=1b1b18&bgcolor=ffffff" 
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $appointment->appoint_no }}&color=1b1b18&bgcolor=ffffff"
                                  alt="QR" style="width: 130px; height: 130px;">
                         </div>
                     </div>
@@ -50,7 +50,7 @@
                     <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #343a40;">Booking Details:</h3>
                     <div style="font-size: 13px; line-height: 1.6;">
                         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; padding-bottom: 4px;">
-                            <span style="color: #6c757d;">Customer:</span>
+                            <span style="color: #6c757d;">Name:</span>
                             <span style="font-weight: 600;">{{ $appointment->applicant->first_name }} {{ $appointment->applicant->last_name }}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; padding-bottom: 4px; padding-top: 4px;">
@@ -64,26 +64,26 @@
                         <div style="display: flex; justify-content: space-between; padding-top: 4px;">
                             <span style="color: #6c757d;">Date & Time:</span>
                             <span style="font-weight: 600;">
-                                {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('l, M j, Y') }} at 
+                                {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('l, M j, Y') }} at
                                 {{ $appointment->timeSlot ? \Carbon\Carbon::parse($appointment->timeSlot->start_time)->format('h:i A') : 'N/A' }}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 12px;">
-                    <button onclick="window.print()" style="flex: 1; background: white; border: 1px solid #ced4da; color: #495057; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h6a2 2 0 002-2z"></path></svg>
-                        Save PDF
-                    </button>
-                    <a href="{{ route('appointment.create') }}" style="flex: 1; background-color: #007bff; color: white; text-decoration: none; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; text-align: center;">
-                        + Book Again
-                    </a>
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="window.print()" style="flex: 1; background: white; border: 1px solid #ced4da; color: #495057; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h6a2 2 0 002-2z"></path></svg>
+                            Save as PDF
+                        </button>
+                        <a href="{{ route('appointment.create') }}" style="flex: 1; background-color: #6a7179; color: white; text-decoration: none; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; text-align: center;">
+                            Save as Image
+                        </a>
+                    </div>
                 </div>
-            </div>
-            
+
             <div style="padding: 12px; text-align: center; border-top: 1px solid #f1f1f1; background: #fafafa;">
-                <p style="font-size: 10px; color: #adb5bd; margin: 0; font-weight: bold; letter-spacing: 0.5px;">DESIGNED & DEVELOPED BY VFIX TECHNOLOGY</p>
+                <p style="font-size: 14px; color: #000000; margin: 0; font-weight: bold; letter-spacing: 0.8px;">Take A SCREENSHOT and PRESENT your QR Code at the Information Desk during your scheduled appointment. </p>
             </div>
         </div>
     </div>

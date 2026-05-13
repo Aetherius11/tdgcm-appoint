@@ -20,23 +20,31 @@ class TimeAvailabilityResource extends Resource
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('day_of_week')
-                    ->options([
-                        1 => 'Monday',
-                        2 => 'Tuesday',
-                        3 => 'Wednesday',
-                        4 => 'Thursday',
-                        5 => 'Friday',
-                    ])
-                    ->required(),
-                Forms\Components\TimePicker::make('start_time')->required(),
-                Forms\Components\TimePicker::make('end_time')->required(),
-                Forms\Components\TextInput::make('max_slots')->numeric()->default(5),
-            ]);
-    }
+{
+    return $form
+        ->schema([
+            // 1. ADD THIS SELECT COMPONENT HERE:
+            Forms\Components\Select::make('purpose_id')
+                ->relationship('purpose', 'purpose_name')
+                ->required()
+                ->preload()
+                ->searchable(),
+
+            Forms\Components\Select::make('day_of_week')
+                ->options([
+                    1 => 'Monday',
+                    2 => 'Tuesday',
+                    3 => 'Wednesday',
+                    4 => 'Thursday',
+                    5 => 'Friday',
+                ])
+                ->required(),
+
+            Forms\Components\TimePicker::make('start_time')->required(),
+            Forms\Components\TimePicker::make('end_time')->required(),
+            Forms\Components\TextInput::make('max_slots')->numeric()->default(5),
+        ]);
+}
 
 
     public static function table(Table $table): Table
@@ -79,7 +87,7 @@ class TimeAvailabilityResource extends Resource
                 Tables\Actions\EditAction::make(),
             ]);
 
-            
+
     }
 
     public static function getRelations(): array

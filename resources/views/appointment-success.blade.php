@@ -50,15 +50,15 @@
                     <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #343a40;">Booking Details:</h3>
                     <div style="font-size: 13px; line-height: 1.6;">
                         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; padding-bottom: 4px;">
-                            <span style="color: #6c757d;">Customer:</span>
+                            <span style="color: #6c757d;">Name:</span>
                             <span style="font-weight: 600;">{{ $appointment->applicant->first_name }} {{ $appointment->applicant->last_name }}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; padding-bottom: 4px; padding-top: 4px;">
-                            <span style="color: #6c757d;">Principal:</span>
+                            <span style="color: #6c757d;">Department:</span>
                             <span style="font-weight: 600;">{{ $appointment->principal->name ?? 'N/A' }}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; padding-bottom: 4px; padding-top: 4px;">
-                            <span style="color: #6c757d;">Service:</span>
+                            <span style="color: #6c757d;">Purpose:</span>
                             <span style="font-weight: 600;">{{ $appointment->purpose->purpose_name ?? 'N/A' }}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; padding-top: 4px;">
@@ -75,15 +75,12 @@
                     <button onclick="window.print()" style="flex: 1; background: white; border: 1px solid #ced4da; color: #495057; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h6a2 2 0 002-2z"></path></svg>
                         Save PDF
-                    </button>
-                    <a href="{{ route('appointment.create') }}" style="flex: 1; background-color: #007bff; color: white; text-decoration: none; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; text-align: center;">
-                        + Book Again
-                    </a>
+                    
                 </div>
             </div>
             
             <div style="padding: 12px; text-align: center; border-top: 1px solid #f1f1f1; background: #fafafa;">
-                <p style="font-size: 10px; color: #adb5bd; margin: 0; font-weight: bold; letter-spacing: 0.5px;">DESIGNED & DEVELOPED BY VFIX TECHNOLOGY</p>
+                <p style="font-size: 10px; color: #adb5bd; margin: 0; font-weight: bold; letter-spacing: 0.5px;">FAST BOOKING WITH TCM EASYQUE</p>
             </div>
         </div>
     </div>

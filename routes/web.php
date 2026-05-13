@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\UserInvitationController;
+use App\Http\Controllers\TVDisplayController;
+use App\Http\Controllers\WindowStaffController;
 use Illuminate\Support\Facades\Route;
 
 // Public appointment routes
@@ -34,8 +36,7 @@ Route::get('/tv-display', [TVDisplayController::class, 'index'])->name('tv.displ
 // Window Staff routes
 Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
 
-use App\Http\Controllers\TVDisplayController;
-use App\Http\Controllers\WindowStaffController;
+
 
 // Routes for the Window Staff actions (form-based)
 Route::post('/window/notify', [WindowStaffController::class, 'notify'])->name('window.notify');

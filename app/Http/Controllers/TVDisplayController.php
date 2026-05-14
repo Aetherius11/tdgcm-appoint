@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class TVDisplayController extends Controller
 {
@@ -19,7 +20,7 @@ class TVDisplayController extends Controller
     {
         $counters = [];
         for ($i = 1; $i <= 12; $i++) {
-            $windowStatus = \Cache::get("window_status_{$i}", 'closed');
+            $windowStatus = Cache::get("window_status_{$i}", 'closed');
             $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
             $counters[$i] = [
                 'counter'       => $i,
@@ -98,10 +99,10 @@ class TVDisplayController extends Controller
         $countersJson = array_values(array_map(function ($c) {
             $appt = $c['appointment'];
             return [
-                'counter'   => $c['counter'],
-                'appoint_no'=> $appt ? str_pad(substr($appt->appoint_no, -4), 4, '0', STR_PAD_LEFT) : null,
-                'name'      => $appt ? (substr($appt->applicant->first_name, 0, 1) . '. ' . $appt->applicant->last_name) : null,
-                'status'    => $c['status'],
+                'counter'    => $c['counter'],
+                'appoint_no' => $appt ? str_pad(substr($appt->appoint_no, -4), 4, '0', STR_PAD_LEFT) : null,
+                'name'       => $appt ? (substr($appt->applicant->first_name, 0, 1) . '. ' . $appt->applicant->last_name) : null,
+                'status'     => $c['status'],
             ];
         }, $counters));
 
@@ -119,12 +120,12 @@ class TVDisplayController extends Controller
         $upNextJson = $upNext->map(function ($next) {
             $isTransferred = in_array($next->status, ['pending', 'approved']) && $next->window_number;
             return [
-                'appoint_no'    => str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT),
-                'name'          => substr($next->applicant->first_name, 0, 1) . '. ' . $next->applicant->last_name,
-                'status'        => $next->status,
-                'window_number' => $next->window_number,
-                'is_transferred'=> $isTransferred,
-                'checked_in_at' => $next->checked_in_at?->format('g:i A'),
+                'appoint_no'     => str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT),
+                'name'           => substr($next->applicant->first_name, 0, 1) . '. ' . $next->applicant->last_name,
+                'status'         => $next->status,
+                'window_number'  => $next->window_number,
+                'is_transferred' => $isTransferred,
+                'checked_in_at'  => $next->checked_in_at?->format('g:i A'),
             ];
         })->values();
 

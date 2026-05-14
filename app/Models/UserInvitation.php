@@ -95,7 +95,7 @@ class UserInvitation extends Model
     {
         return static::where('token', $token)
             ->where('expires_at', '>', now())
-            ->whereNull('accepted_at')
+            ->whereNull('accepted_at') // <--- THIS is what is blocking you now
             ->first();
     }
 
@@ -117,10 +117,11 @@ class UserInvitation extends Model
         return static::create([
             'email' => $email,
             'token' => self::generateToken(),
-            'team_id' => $teamId,
+            'team_id' => $teamId, // This is your Office Department ID
             'invited_by_name' => $invitedByName,
             'invited_by_email' => $invitedByEmail,
-            'expires_at' => now()->addDays($expiresInDays),
+            // Add 24 hours to 'now' to ensure they have time to click
+            'expires_at' => now()->addDay(), 
         ]);
     }
 }

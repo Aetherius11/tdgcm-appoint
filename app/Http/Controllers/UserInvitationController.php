@@ -114,10 +114,14 @@ class UserInvitationController extends Controller
     {
         $user = Auth::user();
 
-        // Check if user has 2FA enabled but not confirmed
+        // If session was lost or user isn't logged in, redirect to home
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        // Ensure they actually need to be here
         if (! $user->two_factor_secret || $user->two_factor_confirmed_at) {
-            return redirect()->route('dashboard')
-                ->with('success', 'Your account has been set up successfully!');
+            return redirect()->route('dashboard');
         }
 
         // Generate QR code

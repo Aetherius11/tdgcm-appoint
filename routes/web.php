@@ -1,10 +1,25 @@
 <?php
 
+use App\Models\Purpose;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\UserInvitationController;
 use App\Http\Controllers\TVDisplayController;
 use App\Http\Controllers\WindowStaffController;
 use Illuminate\Support\Facades\Route;
+
+
+Route::get('/api/purposes/{principalId}', function ($principalId) {
+    // We find the Department (Principal) first, 
+    // then get the purposes linked specifically to it.
+    $principal = \App\Models\Principal::find($principalId);
+
+    if (!$principal) {
+        return response()->json([]);
+    }
+
+    // This assumes you have a 'purposes' relationship defined in your Principal model
+    return $principal->purposes()->get(['purposes.id', 'purpose_name']);
+});
 
 // Public appointment routes
 Route::get('/', [AppointmentController::class, 'create'])->name('appointment.create');

@@ -3,12 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Models\Team;
+use App\Models\Principal;
 use App\Models\User;
 use App\Models\UserInvitation;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -46,12 +47,24 @@ class UserResource extends Resource
 
                 Forms\Components\DateTimePicker::make('two_factor_confirmed_at'),
 
-                // Changing "Current Team ID" to "Office Department"
+                Forms\Components\CheckboxList::make('roles')
+                    ->label('Roles')
+                    ->options([
+                        'admin' => 'Admin',
+                        'staff' => 'Window Staff',
+                        'guard' => 'Guard',
+                    ])
+                    ->default(['staff'])
+                    ->columns(3)
+                    ->live()
+                    ->required(),
+
                 Forms\Components\Select::make('current_team_id')
-                    ->label('Office Department')
-                    ->relationship('currentTeam', 'name')
-                    ->preload()
-                    ->searchable(),
+                    ->label('Department')
+                    ->options(Principal::orderBy('name')->pluck('name', 'id'))
+                    ->searchable()
+                    ->nullable()
+                    ->visible(fn (Get $get): bool => in_array('staff', (array) ($get('roles') ?? []))),
 
                 Forms\Components\TextInput::make('profile_photo_path'),
                 Forms\Components\DateTimePicker::make('email_verified_at'),
@@ -72,11 +85,27 @@ class UserResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                // 3. Office Department (Replaces Current team id)
-                Tables\Columns\TextColumn::make('currentTeam.name')
-                    ->label('Office Department')
+                Tables\Columns\TextColumn::make('roles')
+                    ->label('Roles')
                     ->badge()
-                    ->color('info'),
+                    ->formatStateUsing(fn ($state): string => match ($state) {
+                        'admin' => 'Admin',
+                        'staff' => 'Window Staff',
+                        'guard' => 'Guard',
+                        default => ucfirst($state),
+                    })
+                    ->color(fn ($state): string => match ($state) {
+                        'admin' => 'success',
+                        'guard' => 'warning',
+                        default => 'info',
+                    })
+                    ->separator(','),
+
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Department')
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('—'),
             ])
             ->filters([
                 //

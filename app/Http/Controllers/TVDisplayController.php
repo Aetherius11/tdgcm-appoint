@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Window;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
@@ -18,14 +19,15 @@ class TVDisplayController extends Controller
 
     private function buildCounters(): array
     {
+        $windows  = Window::orderBy('id')->get();
         $counters = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $windowStatus = Cache::get("window_status_{$i}", 'closed');
-            $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
-            $counters[$i] = [
-                'counter'       => $i,
+
+        foreach ($windows as $window) {
+            $windowStatus = Cache::get("window_status_{$window->id}", 'closed');
+            $counters[$window->id] = [
+                'counter'       => $window->name,
                 'appointment'   => null,
-                'status'        => $defaultStatus,
+                'status'        => $windowStatus === 'break' ? 'On Break' : 'Vacant',
                 'window_status' => $windowStatus,
             ];
         }
@@ -39,16 +41,15 @@ class TVDisplayController extends Controller
 
         foreach ($appointments as $appt) {
             $n = $appt->window_number;
-            $preserved = $counters[$n]['window_status'] ?? 'open';
+            if (!isset($counters[$n])) continue;
             $counters[$n] = [
-                'counter'       => $n,
+                'counter'       => $counters[$n]['counter'],
                 'appointment'   => $appt,
                 'status'        => $appt->status === 'calling' ? 'Calling' : 'Serving',
-                'window_status' => $preserved,
+                'window_status' => $counters[$n]['window_status'],
             ];
         }
 
-        ksort($counters);
         return $counters;
     }
 

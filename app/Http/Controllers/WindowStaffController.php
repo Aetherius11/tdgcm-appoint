@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Window;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
@@ -74,8 +75,7 @@ class WindowStaffController extends Controller
             ->whereDate('transaction_completed_at', now()->toDateString())
             ->count();
 
-        // Generate list of available windows (1-12)
-        $availableWindows = range(1, 12);
+        $availableWindows = $this->getWindowsForUser();
 
         return view('WindowStaff', compact('pendingAppointments', 'currentAppointment', 'nextQueue', 'windowNumber', 'availableWindows', 'todayCompleted', 'todayTotal'));
     }
@@ -172,17 +172,32 @@ class WindowStaffController extends Controller
      */
     public function changeWindow(Request $request)
     {
-        $windowNumber = $request->input('window_number', 1);
-        
-        // Validate window number is between 1 and 12
-        if ($windowNumber < 1 || $windowNumber > 12) {
-            return back()->with('error', 'Invalid window number. Please select a number between 1 and 12.');
+        $windowId = $request->input('window_number');
+        $window   = Window::find($windowId);
+
+        if (!$window) {
+            return back()->with('error', 'Invalid window selection.');
         }
-        
-        // Store the window number in session
-        session(['staff_window_number' => $windowNumber]);
-        
-        return back()->with('success', "You are now assigned to Window {$windowNumber}.");
+
+        $allowed = $this->getWindowsForUser()->contains('id', $window->id);
+        if (!$allowed) {
+            return back()->with('error', 'Window ' . $window->name . ' is not assigned to your department.');
+        }
+
+        session(['staff_window_number' => $window->id]);
+
+        return back()->with('success', "You are now assigned to Window {$window->name}.");
+    }
+
+    private function getWindowsForUser()
+    {
+        $principal = auth()->user()?->team;
+
+        if ($principal && $principal->windows()->exists()) {
+            return $principal->windows()->orderBy('windows.id')->get();
+        }
+
+        return Window::orderBy('id')->get();
     }
 
     /**

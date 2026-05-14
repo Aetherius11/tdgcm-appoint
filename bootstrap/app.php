@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'qr-scan',
         ]);
+
+        $middleware->alias([
+            'role.guard' => \App\Http\Middleware\RestrictGuardRole::class,
+        ]);
+
+        $middleware->appendToGroup('web', \App\Http\Middleware\RestrictGuardRole::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

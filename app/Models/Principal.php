@@ -25,6 +25,11 @@ class Principal extends Model
         return $this->belongsTo(Principal::class, 'parent_id');
     }
 
+    public function windows(): BelongsToMany
+    {
+        return $this->belongsToMany(Window::class);
+    }
+
     public function children(): HasMany {
         return $this->hasMany(Principal::class, 'parent_id');
     }

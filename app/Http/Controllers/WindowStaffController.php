@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Window;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class WindowStaffController extends Controller
@@ -15,23 +16,32 @@ class WindowStaffController extends Controller
      */
     public function index()
     {
-        // Get the assigned window number from session (default to 1)
-        $windowNumber = session('staff_window_number', 1);
+        $user = auth()->user();
         
-        // Get today's appointments that are pending or approved and NOT assigned to any window (waiting in queue)
-        $pendingAppointments = Appointment::whereDate('appointment_date', now()->toDateString())
-            ->whereIn('status', ['pending', 'approved'])
-            ->whereNull('window_number')
-            ->with(['applicant', 'purpose', 'timeSlot'])
-            ->orderBy('created_at', 'asc')
-            ->get();
+        // app/Http/Controllers/WindowStaffController.php
 
-        // Get the current appointment being served at the assigned window
-        // NOTE: Do NOT include 'on_hold' - held tickets are in the queue, not the current appointment
-        $currentAppointment = Appointment::where('window_number', $windowNumber)
+        // 1. DYNAMIC: Get windows linked to the user's Department via the conjunction table
+        $availableWindows = Window::whereHas('principals', function($q) use ($user) {
+            $q->where('principals.id', $user->current_team_id);
+        })
+        ->orderBy('id', 'asc')
+        ->get();
+
+        // 2. Default to the first available window for this department if none in session
+        $windowId = session('staff_window_id', $availableWindows->first()?->id);
+        $currentWindow = Window::find($windowId);
+        
+        // 3. DYNAMIC: Get Purposes linked to this specific Office Department
+        // This ensures staff only see applicants for tasks their office handles
+        $departmentPurposes = Purpose::whereHas('principals', function($q) use ($user) {
+            $q->where('principals.id', $user->current_team_id);
+        })->pluck('id');
+
+        // 4. Filter Current Appointment for this specific window
+        $currentAppointment = Appointment::where('window_number', $windowId)
             ->whereIn('status', ['calling', 'serving'])
             ->where(function($q) {
-                $q->whereDate('appointment_date', now()->toDateString())
+                $q->whereDate('appointment_date', today())
                   ->orWhere(function($q2) {
                       $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
                   });
@@ -40,39 +50,32 @@ class WindowStaffController extends Controller
             ->latest('updated_at')
             ->first();
 
-        // Get next appointments in queue (includes transferred appointments and held tickets)
-        // Only show today's appointments or guard override check-ins
+        // 5. DYNAMIC: Filter Next Queue by Department's Purposes
         $nextQueue = Appointment::whereIn('status', ['pending', 'approved', 'on_hold'])
-            ->whereNotNull('checked_in_at') // Only show appointments that have checked in
-            ->where(function($q) {
-                // Today's appointments OR guard override check-ins
-                $q->whereDate('appointment_date', now()->toDateString())
-                  ->orWhere(function($q2) {
-                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
-                  });
+            ->whereIn('purpose_id', $departmentPurposes)
+            ->whereNotNull('checked_in_at')
+            ->where(function($q) use ($windowId) {
+                $q->whereNull('window_number')  
+                  ->orWhere('window_number', $windowId); 
             })
-            ->where(function($q) use ($windowNumber) {
-                $q->whereNull('window_number')  // General queue
-                  ->orWhere('window_number', $windowNumber);  // Transferred or held tickets for this window
-            })
+            ->whereDate('appointment_date', today())
             ->with(['applicant', 'purpose', 'timeSlot'])
-            ->orderByRaw('CASE WHEN window_number = ? THEN 0 ELSE 1 END', [$windowNumber])  // Transferred/Held first
-            ->orderBy('checked_in_at', 'asc')  // Then by check-in time
+            ->orderByRaw('CASE WHEN window_number = ? THEN 0 ELSE 1 END', [$windowId])
+            ->orderBy('checked_in_at', 'asc')
             ->take(5)
             ->get();
 
-        // Get today's completed transactions for this window (for summary box)
-        $todayCompleted = Appointment::where('window_number', $windowNumber)
+        // Stats and Completed filtered by the dynamic windowId
+        $todayCompleted = Appointment::where('window_number', $windowId)
             ->where('status', 'completed')
-            ->whereDate('transaction_completed_at', now()->toDateString())
+            ->whereDate('transaction_completed_at', today())
             ->orderBy('transaction_completed_at', 'desc')
             ->take(5)
             ->get();
 
-        // Calculate today's stats
-        $todayTotal = Appointment::where('window_number', $windowNumber)
+        $todayTotal = Appointment::where('window_number', $windowId)
             ->where('status', 'completed')
-            ->whereDate('transaction_completed_at', now()->toDateString())
+            ->whereDate('transaction_completed_at', today())
             ->count();
 
         $availableWindows = $this->getWindowsForUser();
@@ -168,7 +171,7 @@ class WindowStaffController extends Controller
     }
 
     /**
-     * Change the assigned window number for the staff member
+     * Change the assigned window based on the dynamic database ID
      */
     public function changeWindow(Request $request)
     {
@@ -201,78 +204,31 @@ class WindowStaffController extends Controller
     }
 
     /**
-     * Notify/Call the next applicant to the window
+     * Notify/Call the next applicant
      */
     public function notify(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
-        $windowNumber = session('staff_window_number', 1);
+        $windowId = session('staff_window_id');
+        $window = Window::find($windowId);
         
-        if (!$appointmentId) {
-            // Get the first pending appointment for today that has checked in
-            $appointment = Appointment::whereDate('appointment_date', now()->toDateString())
-                ->whereIn('status', ['pending', 'approved'])
-                ->whereNull('window_number')
-                ->whereNotNull('checked_in_at')
-                ->orderBy('checked_in_at', 'asc')
-                ->first();
-        } else {
-            // Validate the appointment is eligible to be (re-)called.
-            // Covers: general queue (no window), transferred to this window, or re-call of a 'calling' ticket.
-            $appointment = Appointment::where('id', $appointmentId)
-                ->where(function($q) use ($windowNumber) {
-                    // Normal call: pending/approved in general queue or assigned to this window
-                    $q->where(function($inner) use ($windowNumber) {
-                        $inner->whereIn('status', ['pending', 'approved'])
-                              ->where(function($w) use ($windowNumber) {
-                                  $w->whereNull('window_number')
-                                    ->orWhere('window_number', $windowNumber);
-                              });
-                    })
-                    // Re-call: already 'calling' at this window
-                    ->orWhere(function($inner) use ($windowNumber) {
-                        $inner->where('status', 'calling')
-                              ->where('window_number', $windowNumber);
-                    });
-                })
-                ->whereNotNull('checked_in_at')
-                ->where(function($q) {
-                    $q->whereDate('appointment_date', now()->toDateString())
-                      ->orWhere(function($q2) {
-                          $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
-                      });
-                })
-                ->first();
+        $appointment = Appointment::findOrFail($appointmentId);
 
-            if (!$appointment) {
-                return back()->with('error', 'This applicant is not in the queue or has already been called.');
-            }
-        }
-
-        if (!$appointment) {
-            return back()->with('error', 'No applicants in queue.');
-        }
-
-        // Update status to 'calling' and record the time
         $appointment->update([
             'status' => 'calling',
             'called_at' => Carbon::now(),
-            'counter_number' => $windowNumber,
-            'window_number' => $windowNumber,
+            'window_number' => $windowId,
+            'counter_number' => $window->name, // Saves the dynamic name for TV display
         ]);
 
-        return back()->with('success', "Applicant has been called to Window {$windowNumber}.");
+        return back()->with('success', "Applicant has been called to {$window->name}.");
     }
 
-    /**
-     * Start serving the applicant
-     */
     public function startService(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
         $appointment = Appointment::findOrFail($appointmentId);
 
-        // Update status to 'serving' and record the start time
         $appointment->update([
             'status' => 'serving',
             'served_at' => Carbon::now(),
@@ -282,9 +238,6 @@ class WindowStaffController extends Controller
         return back()->with('success', 'Service started.');
     }
 
-    /**
-     * End service for the current applicant
-     */
     public function endService(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
@@ -295,187 +248,90 @@ class WindowStaffController extends Controller
             'transaction_completed_at' => Carbon::now(),
         ]);
 
-        return back()->with('success', 'Service finished. Next applicant, please!');
+        return back()->with('success', 'Service finished.');
     }
 
-    /**
-     * Hold the current ticket
-     */
     public function holdTicket(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
         $appointment = Appointment::findOrFail($appointmentId);
 
-        // Update status to 'on_hold'
-        $appointment->update([
-            'status' => 'on_hold',
-        ]);
-
-        return back()->with('success', 'Ticket has been put on hold.');
+        $appointment->update(['status' => 'on_hold']);
+        return back()->with('success', 'Ticket put on hold.');
     }
 
-    /**
-     * Resume a held ticket
-     */
     public function resumeTicket(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
         $appointment = Appointment::findOrFail($appointmentId);
 
-        // Resume to serving status
-        $appointment->update([
-            'status' => 'serving',
-        ]);
-
-        return back()->with('success', 'Ticket has been resumed.');
+        $appointment->update(['status' => 'serving']);
+        return back()->with('success', 'Ticket resumed.');
     }
 
-    /**
-     * Transfer to another window
-     */
     public function transfer(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
-        $windowNumber = $request->input('window_number', 2);
+        $targetWindowId = $request->input('window_number'); // Renamed internally for clarity
         $appointment = Appointment::findOrFail($appointmentId);
 
-        // Transfer to another window — set pending so the receiving window can call them
         $appointment->update([
-            'window_number' => $windowNumber,
-            'counter_number' => $windowNumber,
+            'window_number' => $targetWindowId,
             'status' => 'pending',
         ]);
 
-        return back()->with('success', "Transferred to Window {$windowNumber}.");
+        return back()->with('success', "Transferred successfully.");
     }
 
-    /**
-     * Open the counter - makes the window available for service
-     */
     public function openCounter(Request $request)
     {
-        $windowNumber = session('staff_window_number', 1);
-        session(['window_status' => 'open', 'window_opened_at' => Carbon::now()]);
-        \Cache::put("window_status_{$windowNumber}", 'open', now()->addHours(24));
+        $windowId = session('staff_window_id');
+        Cache::put("window_status_{$windowId}", 'open', now()->addHours(24));
+        session(['window_status' => 'open']);
 
-        return back()->with('success', 'Counter is now OPEN. You can start calling applicants.');
+        return back()->with('success', 'Counter is now OPEN.');
     }
 
-    /**
-     * Close the counter - makes the window unavailable
-     */
     public function closeCounter(Request $request)
     {
-        $windowNumber = session('staff_window_number', 1);
-        
-        // Check if there's a current appointment being served at this window
-        $currentAppointment = Appointment::whereDate('appointment_date', now()->toDateString())
-            ->where('window_number', $windowNumber)
-            ->whereIn('status', ['calling', 'serving', 'on_hold'])
-            ->first();
+        $windowId = session('staff_window_id');
+        Cache::put("window_status_{$windowId}", 'closed', now()->addHours(24));
+        session(['window_status' => 'closed']);
 
-        if ($currentAppointment) {
-            return back()->with('error', "Cannot close Window {$windowNumber} while an applicant is being served. Please end or transfer the current appointment first.");
-        }
-
-        session(['window_status' => 'closed', 'window_closed_at' => Carbon::now()]);
-        \Cache::put("window_status_{$windowNumber}", 'closed', now()->addHours(24));
-
-        return back()->with('success', "Window {$windowNumber} is now CLOSED.");
+        return back()->with('success', 'Counter is now CLOSED.');
     }
 
-    /**
-     * Start break - temporarily unavailable
-     */
     public function startBreak(Request $request)
     {
-        $windowNumber = session('staff_window_number', 1);
-        
-        // Check if there's a current appointment being served at this window
-        $currentAppointment = Appointment::whereDate('appointment_date', now()->toDateString())
-            ->where('window_number', $windowNumber)
-            ->whereIn('status', ['calling', 'serving', 'on_hold'])
-            ->first();
+        $windowId = session('staff_window_id');
+        Cache::put("window_status_{$windowId}", 'break', now()->addHours(24));
+        session(['window_status' => 'break']);
 
-        if ($currentAppointment) {
-            return back()->with('error', "Cannot go on break while an applicant is being served at Window {$windowNumber}. Please end or transfer the current appointment first.");
-        }
-
-        session(['window_status' => 'break', 'window_break_at' => Carbon::now()]);
-        \Cache::put("window_status_{$windowNumber}", 'break', now()->addHours(24));
-
-        return back()->with('success', "You are now on BREAK. Window {$windowNumber} is temporarily unavailable.");
+        return back()->with('success', 'You are now on BREAK.');
     }
 
     /**
-     * API: Get current window status for TV display
+     * API: Get window data for TV display (Dynamic Source)
      */
-    public function getWindowStatus(): JsonResponse
+    public function getQueueData(): JsonResponse
     {
-        $windows = [];
-        
-        // Get all active windows (1-12)
-        for ($i = 1; $i <= 12; $i++) {
-            $appointment = Appointment::whereDate('appointment_date', now()->toDateString())
-                ->where('window_number', $i)
+        $windows = Window::all();
+        $counters = [];
+
+        foreach ($windows as $window) {
+            $appointment = Appointment::with('applicant')
+                ->where('window_number', $window->id)
                 ->whereIn('status', ['calling', 'serving'])
-                ->with(['applicant'])
-                ->latest('updated_at')
+                ->whereDate('appointment_date', today())
                 ->first();
 
-            $windows[$i] = [
-                'counter' => $i,
+            $counters[$window->id] = [
+                'counter' => $window->name,
                 'appointment' => $appointment,
                 'status' => $appointment ? ucfirst($appointment->status) : 'Vacant'
             ];
         }
 
-        // Get the most recently called appointment for the main display
-        $currentCall = Appointment::whereDate('appointment_date', now()->toDateString())
-            ->where('status', 'calling')
-            ->with(['applicant'])
-            ->latest('called_at')
-            ->first();
-
-        return response()->json([
-            'windows' => $windows,
-            'currentCall' => $currentCall
-        ]);
-    }
-
-    /**
-     * API: Get queue data for TV display
-     */
-    public function getQueueData(): JsonResponse
-    {
-        // Get today's appointments with assigned windows (only active statuses)
-        $appointments = Appointment::with('applicant')
-            ->whereDate('appointment_date', today())
-            ->whereIn('status', ['calling', 'serving'])
-            ->whereNotNull('window_number')
-            ->orderBy('window_number')
-            ->get();
-
-        $counters = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $counters[$i] = [
-                'counter' => $i,
-                'appointment' => null,
-                'status' => 'Vacant'
-            ];
-        }
-
-        foreach ($appointments as $appointment) {
-            if (isset($counters[$appointment->window_number])) {
-                $counters[$appointment->window_number] = [
-                    'counter' => $appointment->window_number,
-                    'appointment' => $appointment,
-                    'status' => ucfirst($appointment->status)
-                ];
-            }
-        }
-
-        // Get the most recently called appointment for the large display
         $currentCall = Appointment::with('applicant')
             ->whereDate('appointment_date', today())
             ->where('status', 'calling')

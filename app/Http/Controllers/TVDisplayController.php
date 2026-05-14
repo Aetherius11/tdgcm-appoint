@@ -4,15 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Window;
 use App\Models\Appointment;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\JsonResponse;
 
 class TVDisplayController extends Controller
 {
-    public function index()
+    private function dateFilter($q): void
     {
-        // 1. DYNAMIC: Fetch all windows from your maintenance table
-        $windowModels = Window::orderBy('id', 'asc')->get();
-        
+        $q->whereDate('appointment_date', today())
+          ->orWhere(function ($q2) {
+              $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+          });
+    }
+
+    private function buildCounters(): array
+    {
         $counters = [];
 
         // 2. Initialize counters based on your database windows instead of a hard-coded loop
@@ -20,86 +25,118 @@ class TVDisplayController extends Controller
             // Using window ID for cache lookup to maintain individual window states
             $windowStatus = Cache::get("window_status_{$window->id}", 'closed');
             $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
-            
-            $counters[$window->id] = [
-                'counter' => $window->name, // Displays the custom name from Admin (e.g., "Window 1")
-                'appointment' => null,
-                'status' => $defaultStatus,
+            $counters[$i] = [
+                'counter'       => $i,
+                'appointment'   => null,
+                'status'        => $defaultStatus,
                 'window_status' => $windowStatus,
             ];
         }
 
-        // 3. Fetch active appointments (Only calling/serving show on counters)
-        $appointments = Appointment::with(['applicant', 'timeSlot'])
+        $appointments = Appointment::with('applicant')
             ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('window_number')
-            ->where(function($q) {
-                $q->whereDate('appointment_date', today())
-                  ->orWhere(function($q2) {
-                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
-                  });
-            })
+            ->where(fn($q) => $this->dateFilter($q))
             ->orderBy('window_number')
             ->get();
 
-        // 4. Fill in the dynamic counters with actual appointments
-        foreach ($appointments as $appointment) {
-            if (isset($counters[$appointment->window_number])) {
-                $statusLabel = 'Vacant';
-                if ($appointment->status === 'calling') {
-                    $statusLabel = 'Calling';
-                } elseif ($appointment->status === 'serving') {
-                    $statusLabel = 'Serving';
-                } elseif ($appointment->status === 'on_hold') {
-                    $statusLabel = 'On Hold';
-                }
-
-                $counters[$appointment->window_number]['appointment'] = $appointment;
-                $counters[$appointment->window_number]['status'] = $statusLabel;
-            }
+        foreach ($appointments as $appt) {
+            $n = $appt->window_number;
+            $preserved = $counters[$n]['window_status'] ?? 'open';
+            $counters[$n] = [
+                'counter'       => $n,
+                'appointment'   => $appt,
+                'status'        => $appt->status === 'calling' ? 'Calling' : 'Serving',
+                'window_status' => $preserved,
+            ];
         }
 
-        // 5. Get the most recently called appointment for the large display
-        $currentCall = Appointment::with(['applicant', 'timeSlot'])
+        ksort($counters);
+        return $counters;
+    }
+
+    private function buildCurrentCall()
+    {
+        return Appointment::with('applicant')
             ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('called_at')
-            ->where(function($q) {
-                $q->whereDate('appointment_date', today())
-                  ->orWhere(function($q2) {
-                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
-                  });
-            })
+            ->where(fn($q) => $this->dateFilter($q))
             ->orderBy('called_at', 'desc')
             ->first();
+    }
 
-        // 6. Get upcoming appointments (No changes needed here)
-        $upNext = Appointment::with(['applicant', 'timeSlot'])
-            ->where(function($q) {
-                $q->where(function($inner) {
-                    $inner->whereIn('status', ['pending', 'approved'])
-                          ->whereNull('window_number');
+    private function buildUpNext()
+    {
+        return Appointment::with('applicant')
+            ->where(function ($q) {
+                $q->where(function ($inner) {
+                    $inner->whereIn('status', ['pending', 'approved'])->whereNull('window_number');
                 })
-                ->orWhere(function($inner) {
-                    $inner->whereIn('status', ['pending', 'approved'])
-                          ->whereNotNull('window_number');
+                ->orWhere(function ($inner) {
+                    $inner->whereIn('status', ['pending', 'approved'])->whereNotNull('window_number');
                 })
                 ->orWhere('status', 'on_hold');
             })
             ->whereNotNull('checked_in_at')
-            ->where(function($q) {
-                $q->whereDate('appointment_date', today())
-                  ->orWhere(function($q2) {
-                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
-                  });
-            })
+            ->where(fn($q) => $this->dateFilter($q))
             ->orderBy('checked_in_at', 'asc')
-            ->take(5)
+            ->take(10)
             ->get();
+    }
 
+    public function index()
+    {
         return view('tv-display', [
-            'counters' => $counters,
-            'currentCall' => $currentCall,
-            'upNext' => $upNext
+            'counters'    => $this->buildCounters(),
+            'currentCall' => $this->buildCurrentCall(),
+            'upNext'      => $this->buildUpNext(),
+        ]);
+    }
+
+    public function getData(): JsonResponse
+    {
+        $counters    = $this->buildCounters();
+        $currentCall = $this->buildCurrentCall();
+        $upNext      = $this->buildUpNext();
+
+        $countersJson = array_values(array_map(function ($c) {
+            $appt = $c['appointment'];
+            return [
+                'counter'   => $c['counter'],
+                'appoint_no'=> $appt ? str_pad(substr($appt->appoint_no, -4), 4, '0', STR_PAD_LEFT) : null,
+                'name'      => $appt ? (substr($appt->applicant->first_name, 0, 1) . '. ' . $appt->applicant->last_name) : null,
+                'status'    => $c['status'],
+            ];
+        }, $counters));
+
+        $callJson = null;
+        if ($currentCall) {
+            $callJson = [
+                'appoint_no'     => str_pad(substr($currentCall->appoint_no, -4), 4, '0', STR_PAD_LEFT),
+                'name'           => substr($currentCall->applicant->first_name, 0, 1) . '. ' . $currentCall->applicant->last_name,
+                'counter_number' => $currentCall->counter_number,
+                'status'         => $currentCall->status,
+                'call_key'       => $currentCall->appoint_no . '_' . ($currentCall->called_at?->timestamp),
+            ];
+        }
+
+        $upNextJson = $upNext->map(function ($next) {
+            $isTransferred = in_array($next->status, ['pending', 'approved']) && $next->window_number;
+            return [
+                'appoint_no'    => str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT),
+                'name'          => substr($next->applicant->first_name, 0, 1) . '. ' . $next->applicant->last_name,
+                'status'        => $next->status,
+                'window_number' => $next->window_number,
+                'is_transferred'=> $isTransferred,
+                'checked_in_at' => $next->checked_in_at?->format('g:i A'),
+            ];
+        })->values();
+
+        return response()->json([
+            'counters'    => $countersJson,
+            'currentCall' => $callJson,
+            'upNext'      => $upNextJson,
+            'now'         => now()->format('l, F j, Y — g:i A'),
         ]);
     }
 }

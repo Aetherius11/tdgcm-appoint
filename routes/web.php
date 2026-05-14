@@ -71,6 +71,7 @@ Route::middleware([
 // API routes for real-time data (used by TV display) - public
 Route::get('/api/window-status', [WindowStaffController::class, 'getWindowStatus'])->name('api.window-status');
 Route::get('/api/queue-data', [WindowStaffController::class, 'getQueueData'])->name('api.queue-data');
+Route::get('/api/tv-data', [TVDisplayController::class, 'getData'])->name('api.tv-data');
 
 // User Invitation routes (public, token-based authentication)
 Route::get('/invite/{token}', [UserInvitationController::class, 'show'])->name('invitations.show');

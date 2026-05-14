@@ -92,7 +92,7 @@
 </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Department</label>
-                            <select name="principal_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select id="department-select" name="principal_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="">Select Department</option>
                                 @foreach($principals as $principal)
                                     <option value="{{ $principal->id }}">{{ $principal->name }}</option>
@@ -102,12 +102,9 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Purpose</label>
-                            <select name="purpose_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select id="purpose-select" name="purpose_id" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" disabled>
                                 <option value="">Select Purpose</option>
-                                @foreach($purposes as $purpose)
-                                    <option value="{{ $purpose->id }}">{{ $purpose->purpose_name }}</option>
-                                @endforeach
-                            </select>
+                                </select>
                         </div>
 
                         <div>
@@ -262,6 +259,33 @@
             evaluateTimeSlots(currentDate);
         }, 60000); // Check every minute
     });
+</script>
+
+<script>
+document.getElementById('department-select').addEventListener('change', function() {
+    const principalId = this.value;
+    const purposeSelect = document.getElementById('purpose-select');
+
+    // Reset and disable Purpose dropdown
+    purposeSelect.innerHTML = '<option value="">Select Purpose</option>';
+    purposeSelect.disabled = true;
+
+    if (principalId) {
+        // Fetch purposes linked to the selected department
+        fetch(`/api/purposes/${principalId}`)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(purpose => {
+                    const option = document.createElement('option');
+                    option.value = purpose.id;
+                    option.textContent = purpose.purpose_name;
+                    purposeSelect.appendChild(option);
+                });
+                purposeSelect.disabled = false;
+            })
+            .catch(error => console.error('Error fetching purposes:', error));
+    }
+});
 </script>
 
 

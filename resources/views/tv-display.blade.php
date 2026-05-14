@@ -54,12 +54,10 @@
                             <tr class="bg-sky-light border-b border-gray-200 hover:bg-sky-medium transition-colors">
                                 <td class="p-3">
                                     <div class="w-14 h-12 bg-[#003366] text-white rounded-md flex items-center justify-center font-bold text-2xl mx-auto">
-                                        {{ $counter['counter'] }}
-                                    </div>
+                                        {{ $counter['counter'] }}  </div>
                                 </td>
                                 <td class="p-3 font-bold text-3xl text-center tracking-widest">
-                                    @if($counter['appointment'])
-                                        {{ str_pad(substr($counter['appointment']->appoint_no, -4), 4, '0', STR_PAD_LEFT) }}
+                                    @if($counter['appointment']) {{ str_pad(substr($counter['appointment']->appoint_no, -4), 4, '0', STR_PAD_LEFT) }}
                                     @else
                                         <span class="text-gray-300">----</span>
                                     @endif
@@ -72,27 +70,21 @@
                                     @endif
                                 </td>
                                 <td class="p-3 text-center">
-                                    @if($counter['status'] === 'Calling')
-                                        <span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-semibold text-lg animate-pulse">
-                                            {{ $counter['status'] }}
-                                        </span>
-                                    @elseif($counter['status'] === 'Serving')
-                                        <span class="bg-green-100 text-green-700 px-4 py-2 rounded-full font-semibold text-lg">
-                                            {{ $counter['status'] }}
-                                        </span>
-                                    @elseif($counter['status'] === 'On Break')
-                                        <span class="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-semibold text-lg">
-                                            On Break
-                                        </span>
-                                    @elseif($counter['status'] === 'Vacant')
-                                        <span class="bg-gray-200 text-gray-600 px-4 py-2 rounded-full font-semibold text-lg">
-                                            Vacant
-                                        </span>
-                                    @else
-                                        <span class="bg-gray-100 text-gray-500 px-4 py-2 rounded-full font-semibold text-lg">
-                                            {{ $counter['status'] }}
-                                        </span>
-                                    @endif
+                                    @php
+                                        $status = $counter['status'];
+                                        
+                                        // Define the badge colors based on the status string
+                                        $badgeClasses = match($status) {
+                                            'Calling' => 'bg-blue-100 text-blue-700 animate-pulse',
+                                            'Serving' => 'bg-green-100 text-green-700',
+                                            'On Break' => 'bg-yellow-100 text-yellow-700',
+                                            'Vacant'  => 'bg-gray-200 text-gray-600',
+                                            default   => 'bg-gray-100 text-gray-500',
+                                        };
+                                    @endphp
+                                    <span class="{{ $badgeClasses }} px-4 py-2 rounded-full font-semibold text-lg">
+                                        {{ $status }}
+                                    </span>
                                 </td>
                             </tr>
                             @endforeach

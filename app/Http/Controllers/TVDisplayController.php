@@ -2,26 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Window;
 use App\Models\Appointment;
+use Illuminate\Support\Facades\Cache;
 
 class TVDisplayController extends Controller
 {
     public function index()
     {
-        // Initialize 12 counters, reflecting cached window status (open/break/closed)
+        // 1. DYNAMIC: Fetch all windows from your maintenance table
+        $windowModels = Window::orderBy('id', 'asc')->get();
+        
         $counters = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $windowStatus = \Cache::get("window_status_{$i}", 'closed');
+
+        // 2. Initialize counters based on your database windows instead of a hard-coded loop
+        foreach ($windowModels as $window) {
+            // Using window ID for cache lookup to maintain individual window states
+            $windowStatus = Cache::get("window_status_{$window->id}", 'closed');
             $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
-            $counters[$i] = [
-                'counter' => $i,
+            
+            $counters[$window->id] = [
+                'counter' => $window->name, // Displays the custom name from Admin (e.g., "Window 1")
                 'appointment' => null,
                 'status' => $defaultStatus,
                 'window_status' => $windowStatus,
             ];
         }
 
-        // Only calling/serving show on counters — on_hold tickets go back to Up Next
+        // 3. Fetch active appointments (Only calling/serving show on counters)
         $appointments = Appointment::with(['applicant', 'timeSlot'])
             ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('window_number')
@@ -34,7 +42,7 @@ class TVDisplayController extends Controller
             ->orderBy('window_number')
             ->get();
 
-        // Fill in the counters with actual appointments
+        // 4. Fill in the dynamic counters with actual appointments
         foreach ($appointments as $appointment) {
             if (isset($counters[$appointment->window_number])) {
                 $statusLabel = 'Vacant';
@@ -46,16 +54,12 @@ class TVDisplayController extends Controller
                     $statusLabel = 'On Hold';
                 }
 
-                $counters[$appointment->window_number] = [
-                    'counter' => $appointment->window_number,
-                    'appointment' => $appointment,
-                    'status' => $statusLabel
-                ];
+                $counters[$appointment->window_number]['appointment'] = $appointment;
+                $counters[$appointment->window_number]['status'] = $statusLabel;
             }
         }
 
-        // Get the most recently called appointment for the large display
-        // Only show today's appointments or guard override check-ins
+        // 5. Get the most recently called appointment for the large display
         $currentCall = Appointment::with(['applicant', 'timeSlot'])
             ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('called_at')
@@ -68,20 +72,17 @@ class TVDisplayController extends Controller
             ->orderBy('called_at', 'desc')
             ->first();
 
-        // Get upcoming appointments: general queue, transferred (pending with window assigned), and on-hold
+        // 6. Get upcoming appointments (No changes needed here)
         $upNext = Appointment::with(['applicant', 'timeSlot'])
             ->where(function($q) {
-                // General queue: checked in, no window assigned yet
                 $q->where(function($inner) {
                     $inner->whereIn('status', ['pending', 'approved'])
                           ->whereNull('window_number');
                 })
-                // Transferred: pending/approved with a target window (waiting to be called there)
                 ->orWhere(function($inner) {
                     $inner->whereIn('status', ['pending', 'approved'])
                           ->whereNotNull('window_number');
                 })
-                // On-hold: sent back to queue
                 ->orWhere('status', 'on_hold');
             })
             ->whereNotNull('checked_in_at')

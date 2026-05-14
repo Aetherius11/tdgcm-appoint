@@ -27,24 +27,28 @@ class WindowStaffController extends Controller
 
         // Get the current appointment being served at the assigned window
         // NOTE: Do NOT include 'on_hold' - held tickets are in the queue, not the current appointment
-        $currentAppointment = Appointment::whereDate('appointment_date', now()->toDateString())
-            ->where('window_number', $windowNumber)
+        $currentAppointment = Appointment::where('window_number', $windowNumber)
             ->whereIn('status', ['calling', 'serving'])
+            ->where(function($q) {
+                $q->whereDate('appointment_date', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
             ->with(['applicant', 'purpose', 'timeSlot'])
             ->latest('updated_at')
             ->first();
 
         // Get next appointments in queue (includes transferred appointments and held tickets)
-        // Include appointments regardless of appointment_date if they have been override checked-in
+        // Only show today's appointments or guard override check-ins
         $nextQueue = Appointment::whereIn('status', ['pending', 'approved', 'on_hold'])
-            ->whereNotNull('checked_in_at') // Only show appointments that have checked in with guard
+            ->whereNotNull('checked_in_at') // Only show appointments that have checked in
             ->where(function($q) {
-                // Today's appointments OR override check-ins (different date with guard override remarks)
+                // Today's appointments OR guard override check-ins
                 $q->whereDate('appointment_date', now()->toDateString())
-                   ->orWhere(function($q2) {
-                       $q2->whereNotNull('remarks')
-                          ->where('remarks', 'like', 'Guard override:%');
-                   });
+                  ->orWhere(function($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
             })
             ->where(function($q) use ($windowNumber) {
                 $q->whereNull('window_number')  // General queue
@@ -190,14 +194,44 @@ class WindowStaffController extends Controller
         $windowNumber = session('staff_window_number', 1);
         
         if (!$appointmentId) {
-            // Get the first pending appointment if no ID provided
+            // Get the first pending appointment for today that has checked in
             $appointment = Appointment::whereDate('appointment_date', now()->toDateString())
                 ->whereIn('status', ['pending', 'approved'])
                 ->whereNull('window_number')
-                ->orderBy('created_at', 'asc')
+                ->whereNotNull('checked_in_at')
+                ->orderBy('checked_in_at', 'asc')
                 ->first();
         } else {
-            $appointment = Appointment::findOrFail($appointmentId);
+            // Validate the appointment is eligible to be (re-)called.
+            // Covers: general queue (no window), transferred to this window, or re-call of a 'calling' ticket.
+            $appointment = Appointment::where('id', $appointmentId)
+                ->where(function($q) use ($windowNumber) {
+                    // Normal call: pending/approved in general queue or assigned to this window
+                    $q->where(function($inner) use ($windowNumber) {
+                        $inner->whereIn('status', ['pending', 'approved'])
+                              ->where(function($w) use ($windowNumber) {
+                                  $w->whereNull('window_number')
+                                    ->orWhere('window_number', $windowNumber);
+                              });
+                    })
+                    // Re-call: already 'calling' at this window
+                    ->orWhere(function($inner) use ($windowNumber) {
+                        $inner->where('status', 'calling')
+                              ->where('window_number', $windowNumber);
+                    });
+                })
+                ->whereNotNull('checked_in_at')
+                ->where(function($q) {
+                    $q->whereDate('appointment_date', now()->toDateString())
+                      ->orWhere(function($q2) {
+                          $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                      });
+                })
+                ->first();
+
+            if (!$appointment) {
+                return back()->with('error', 'This applicant is not in the queue or has already been called.');
+            }
         }
 
         if (!$appointment) {
@@ -241,7 +275,6 @@ class WindowStaffController extends Controller
         $appointmentId = $request->input('appointment_id');
         $appointment = Appointment::findOrFail($appointmentId);
 
-        // Finalize the ticket with transaction completion timestamp
         $appointment->update([
             'status' => 'completed',
             'transaction_completed_at' => Carbon::now(),
@@ -291,11 +324,11 @@ class WindowStaffController extends Controller
         $windowNumber = $request->input('window_number', 2);
         $appointment = Appointment::findOrFail($appointmentId);
 
-        // Transfer to another window
+        // Transfer to another window — set pending so the receiving window can call them
         $appointment->update([
             'window_number' => $windowNumber,
             'counter_number' => $windowNumber,
-            'status' => 'transferred',
+            'status' => 'pending',
         ]);
 
         return back()->with('success', "Transferred to Window {$windowNumber}.");
@@ -306,9 +339,10 @@ class WindowStaffController extends Controller
      */
     public function openCounter(Request $request)
     {
-        // Store window status in session
+        $windowNumber = session('staff_window_number', 1);
         session(['window_status' => 'open', 'window_opened_at' => Carbon::now()]);
-        
+        \Cache::put("window_status_{$windowNumber}", 'open', now()->addHours(24));
+
         return back()->with('success', 'Counter is now OPEN. You can start calling applicants.');
     }
 
@@ -329,9 +363,9 @@ class WindowStaffController extends Controller
             return back()->with('error', "Cannot close Window {$windowNumber} while an applicant is being served. Please end or transfer the current appointment first.");
         }
 
-        // Store window status in session
         session(['window_status' => 'closed', 'window_closed_at' => Carbon::now()]);
-        
+        \Cache::put("window_status_{$windowNumber}", 'closed', now()->addHours(24));
+
         return back()->with('success', "Window {$windowNumber} is now CLOSED.");
     }
 
@@ -352,9 +386,9 @@ class WindowStaffController extends Controller
             return back()->with('error', "Cannot go on break while an applicant is being served at Window {$windowNumber}. Please end or transfer the current appointment first.");
         }
 
-        // Store window status in session
         session(['window_status' => 'break', 'window_break_at' => Carbon::now()]);
-        
+        \Cache::put("window_status_{$windowNumber}", 'break', now()->addHours(24));
+
         return back()->with('success', "You are now on BREAK. Window {$windowNumber} is temporarily unavailable.");
     }
 
@@ -399,10 +433,10 @@ class WindowStaffController extends Controller
      */
     public function getQueueData(): JsonResponse
     {
-        // Get today's appointments with assigned windows
+        // Get today's appointments with assigned windows (only active statuses)
         $appointments = Appointment::with('applicant')
             ->whereDate('appointment_date', today())
-            ->whereIn('status', ['calling', 'serving', 'completed'])
+            ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('window_number')
             ->orderBy('window_number')
             ->get();

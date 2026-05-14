@@ -55,19 +55,22 @@
 
             <!-- Action Buttons -->
             <div class="grid grid-cols-6 gap-6 mb-10 px-4">
-                <!-- Notify Button - enabled when there's a pending appointment in queue AND no current appointment being served -->
-                @if(isset($pendingAppointments) && $pendingAppointments->isNotEmpty() && (!isset($currentAppointment) || !$currentAppointment))
-                    @php $firstPending = $pendingAppointments->first(); @endphp
+                <!-- Notify Button - enabled when there's a checked-in appointment in queue AND no current appointment being served -->
+                @php
+                    $firstInQueue = isset($nextQueue) && $nextQueue->isNotEmpty() ? $nextQueue->whereNotIn('status', ['on_hold'])->first() : null;
+                    $isCalling = isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'calling';
+                    $isServing = isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'serving';
+                    // Re-call current person if still in 'calling', or call next if no active appointment
+                    $notifyId   = $isCalling ? $currentAppointment->id : ($firstInQueue ? $firstInQueue->id : null);
+                    $canNotify  = $notifyId && !$isServing;
+                @endphp
+                @if($canNotify)
                     <form action="{{ route('window.notify') }}" method="POST">
                         @csrf
-                        <input type="hidden" name="appointment_id" value="{{ $firstPending->id }}">
+                        <input type="hidden" name="appointment_id" value="{{ $notifyId }}">
                         <button type="submit" class="btn-blue h-40 w-full rounded-xl text-3xl font-bold hover:bg-blue-800 shadow-md">Notify</button>
                     </form>
-                @elseif(isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'calling')
-                    <!-- Show Notify as disabled when appointment is already called and waiting -->
-                    <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Notify</button>
                 @else
-                    <!-- No pending appointments -->
                     <button disabled class="bg-gray-300 text-gray-500 h-40 w-full rounded-xl text-3xl font-bold cursor-not-allowed">Notify</button>
                 @endif
 
@@ -169,7 +172,7 @@
 
                     @if(isset($currentAppointment) && $currentAppointment)
                         <div class="ticket-box rounded-full py-4 px-12 flex justify-between items-center mb-8 shadow-sm">
-                            <span class="text-5xl font-bold text-black">{{ str_pad($currentAppointment->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-5xl font-bold text-black">{{ str_pad(substr($currentAppointment->appoint_no, -4), 4, '0', STR_PAD_LEFT) }}</span>
                             <span class="text-4xl font-bold uppercase text-black">{{ $currentAppointment->applicant->first_name }} {{ $currentAppointment->applicant->last_name }}</span>
                         </div>
 
@@ -225,7 +228,7 @@
                             @foreach($nextQueue as $next)
                                 <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm {{ $next->status === 'on_hold' ? 'border-2 border-orange-400 bg-orange-50' : '' }}">
                                     <div class="flex items-center gap-4">
-                                        <span class="text-4xl font-bold text-black">{{ str_pad($next->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                        <span class="text-4xl font-bold text-black">{{ str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT) }}</span>
                                         <span class="text-3xl font-bold uppercase text-black">{{ substr($next->applicant->first_name, 0, 1) }}. {{ $next->applicant->last_name }}</span>
                                         @if($next->status === 'on_hold')
                                             <span class="text-xs bg-orange-500 text-white px-2 py-1 rounded font-bold">Held</span>

@@ -13,9 +13,7 @@ Route::get('/appointment/{appointment}', [AppointmentController::class, 'show'])
 Route::get('/api/time-slots', [AppointmentController::class, 'getAvailableTimeSlots'])->name('api.time-slots');
 
 // Public Queue Display
-Route::get('/queue-display', function () {
-    return view('livewire.queue-display');
-})->name('queue.display');
+Route::get('/queue-display', [TVDisplayController::class, 'index'])->name('queue.display');
 
 // Admin appointments list (protected)
 Route::middleware([
@@ -30,29 +28,32 @@ Route::middleware([
     Route::get('/dashboard', [AppointmentController::class, 'index'])->name('dashboard');
 });
 
-// TV Display routes
+// TV Display routes (public)
 Route::get('/tv-display', [TVDisplayController::class, 'index'])->name('tv.display');
 
-// Window Staff routes
-Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
+// Window Staff routes (protected - requires authentication)
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/WindowStaff', [App\Http\Controllers\WindowStaffController::class, 'index'])->name('Window.Staff');
+    
+    // Routes for the Window Staff actions (form-based)
+    Route::post('/window/notify', [WindowStaffController::class, 'notify'])->name('window.notify');
+    Route::post('/window/start', [WindowStaffController::class, 'startService'])->name('window.start');
+    Route::post('/window/end', [WindowStaffController::class, 'endService'])->name('window.end');
+    Route::post('/window/hold', [WindowStaffController::class, 'holdTicket'])->name('window.hold');
+    Route::post('/window/resume', [WindowStaffController::class, 'resumeTicket'])->name('window.resume');
+    Route::post('/window/transfer', [WindowStaffController::class, 'transfer'])->name('window.transfer');
+    Route::post('/window/open-counter', [WindowStaffController::class, 'openCounter'])->name('window.open-counter');
+    Route::post('/window/close-counter', [WindowStaffController::class, 'closeCounter'])->name('window.close-counter');
+    Route::post('/window/break', [WindowStaffController::class, 'startBreak'])->name('window.break');
+    Route::post('/window/change-window', [WindowStaffController::class, 'changeWindow'])->name('window.change-window');
+    Route::get('/window/transaction-history', [WindowStaffController::class, 'transactionHistory'])->name('window.transaction-history');
+});
 
-
-
-// Routes for the Window Staff actions (form-based)
-Route::post('/window/notify', [WindowStaffController::class, 'notify'])->name('window.notify');
-Route::post('/window/start', [WindowStaffController::class, 'startService'])->name('window.start');
-Route::post('/window/end', [WindowStaffController::class, 'endService'])->name('window.end');
-Route::post('/window/hold', [WindowStaffController::class, 'holdTicket'])->name('window.hold');
-Route::post('/window/resume', [WindowStaffController::class, 'resumeTicket'])->name('window.resume');
-Route::post('/window/transfer', [WindowStaffController::class, 'transfer'])->name('window.transfer');
-Route::post('/window/open-counter', [WindowStaffController::class, 'openCounter'])->name('window.open-counter');
-Route::post('/window/close-counter', [WindowStaffController::class, 'closeCounter'])->name('window.close-counter');
-Route::post('/window/break', [WindowStaffController::class, 'startBreak'])->name('window.break');
-Route::post('/window/change-window', [WindowStaffController::class, 'changeWindow'])->name('window.change-window');
-Route::get('/window/transaction-history', [WindowStaffController::class, 'transactionHistory'])->name('window.transaction-history');
-
-
-// API routes for real-time data (used by TV display)
+// API routes for real-time data (used by TV display) - public
 Route::get('/api/window-status', [WindowStaffController::class, 'getWindowStatus'])->name('api.window-status');
 Route::get('/api/queue-data', [WindowStaffController::class, 'getQueueData'])->name('api.queue-data');
 

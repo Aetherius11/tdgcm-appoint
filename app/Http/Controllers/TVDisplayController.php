@@ -3,27 +3,34 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use Illuminate\Http\Request;
 
 class TVDisplayController extends Controller
 {
     public function index()
     {
-        // Initialize 12 counters
+        // Initialize 12 counters, reflecting cached window status (open/break/closed)
         $counters = [];
         for ($i = 1; $i <= 12; $i++) {
+            $windowStatus = \Cache::get("window_status_{$i}", 'closed');
+            $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
             $counters[$i] = [
                 'counter' => $i,
                 'appointment' => null,
-                'status' => 'Vacant'
+                'status' => $defaultStatus,
+                'window_status' => $windowStatus,
             ];
         }
 
-        // Get today's appointments with assigned windows
+        // Only calling/serving show on counters — on_hold tickets go back to Up Next
         $appointments = Appointment::with(['applicant', 'timeSlot'])
-            ->whereDate('appointment_date', today())
-            ->whereIn('status', ['calling', 'serving', 'on_hold', 'completed'])
+            ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('window_number')
+            ->where(function($q) {
+                $q->whereDate('appointment_date', today())
+                  ->orWhere(function($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
             ->orderBy('window_number')
             ->get();
 
@@ -37,8 +44,6 @@ class TVDisplayController extends Controller
                     $statusLabel = 'Serving';
                 } elseif ($appointment->status === 'on_hold') {
                     $statusLabel = 'On Hold';
-                } elseif ($appointment->status === 'completed') {
-                    $statusLabel = 'Completed';
                 }
 
                 $counters[$appointment->window_number] = [
@@ -50,24 +55,47 @@ class TVDisplayController extends Controller
         }
 
         // Get the most recently called appointment for the large display
+        // Only show today's appointments or guard override check-ins
         $currentCall = Appointment::with(['applicant', 'timeSlot'])
-            ->whereDate('appointment_date', today())
-            ->where('status', 'calling')
+            ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('called_at')
+            ->where(function($q) {
+                $q->whereDate('appointment_date', today())
+                  ->orWhere(function($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
             ->orderBy('called_at', 'desc')
             ->first();
 
-        // Get upcoming appointments (next in queue - only those who have checked in with guard)
+        // Get upcoming appointments: general queue, transferred (pending with window assigned), and on-hold
         $upNext = Appointment::with(['applicant', 'timeSlot'])
-            ->whereDate('appointment_date', today())
-            ->whereIn('status', ['pending', 'approved'])
-            ->whereNotNull('checked_in_at') // Only show appointments that have checked in
-            ->whereNull('window_number')
-            ->orderBy('checked_in_at', 'asc') // Order by check-in time
+            ->where(function($q) {
+                // General queue: checked in, no window assigned yet
+                $q->where(function($inner) {
+                    $inner->whereIn('status', ['pending', 'approved'])
+                          ->whereNull('window_number');
+                })
+                // Transferred: pending/approved with a target window (waiting to be called there)
+                ->orWhere(function($inner) {
+                    $inner->whereIn('status', ['pending', 'approved'])
+                          ->whereNotNull('window_number');
+                })
+                // On-hold: sent back to queue
+                ->orWhere('status', 'on_hold');
+            })
+            ->whereNotNull('checked_in_at')
+            ->where(function($q) {
+                $q->whereDate('appointment_date', today())
+                  ->orWhere(function($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
+            ->orderBy('checked_in_at', 'asc')
             ->take(5)
             ->get();
 
-        return view('livewire.queue-display', [
+        return view('tv-display', [
             'counters' => $counters,
             'currentCall' => $currentCall,
             'upNext' => $upNext

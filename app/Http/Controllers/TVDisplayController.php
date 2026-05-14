@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Window;
 use App\Models\Appointment;
+use App\Models\Window;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class TVDisplayController extends Controller
 {
@@ -18,17 +19,15 @@ class TVDisplayController extends Controller
 
     private function buildCounters(): array
     {
+        $windows  = Window::orderBy('id')->get();
         $counters = [];
 
-        // 2. Initialize counters based on your database windows instead of a hard-coded loop
-        foreach ($windowModels as $window) {
-            // Using window ID for cache lookup to maintain individual window states
+        foreach ($windows as $window) {
             $windowStatus = Cache::get("window_status_{$window->id}", 'closed');
-            $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
-            $counters[$i] = [
-                'counter'       => $i,
+            $counters[$window->id] = [
+                'counter'       => $window->name,
                 'appointment'   => null,
-                'status'        => $defaultStatus,
+                'status'        => $windowStatus === 'break' ? 'On Break' : 'Vacant',
                 'window_status' => $windowStatus,
             ];
         }
@@ -42,16 +41,15 @@ class TVDisplayController extends Controller
 
         foreach ($appointments as $appt) {
             $n = $appt->window_number;
-            $preserved = $counters[$n]['window_status'] ?? 'open';
+            if (!isset($counters[$n])) continue;
             $counters[$n] = [
-                'counter'       => $n,
+                'counter'       => $counters[$n]['counter'],
                 'appointment'   => $appt,
                 'status'        => $appt->status === 'calling' ? 'Calling' : 'Serving',
-                'window_status' => $preserved,
+                'window_status' => $counters[$n]['window_status'],
             ];
         }
 
-        ksort($counters);
         return $counters;
     }
 
@@ -102,10 +100,10 @@ class TVDisplayController extends Controller
         $countersJson = array_values(array_map(function ($c) {
             $appt = $c['appointment'];
             return [
-                'counter'   => $c['counter'],
-                'appoint_no'=> $appt ? str_pad(substr($appt->appoint_no, -4), 4, '0', STR_PAD_LEFT) : null,
-                'name'      => $appt ? (substr($appt->applicant->first_name, 0, 1) . '. ' . $appt->applicant->last_name) : null,
-                'status'    => $c['status'],
+                'counter'    => $c['counter'],
+                'appoint_no' => $appt ? str_pad(substr($appt->appoint_no, -4), 4, '0', STR_PAD_LEFT) : null,
+                'name'       => $appt ? (substr($appt->applicant->first_name, 0, 1) . '. ' . $appt->applicant->last_name) : null,
+                'status'     => $c['status'],
             ];
         }, $counters));
 
@@ -123,12 +121,12 @@ class TVDisplayController extends Controller
         $upNextJson = $upNext->map(function ($next) {
             $isTransferred = in_array($next->status, ['pending', 'approved']) && $next->window_number;
             return [
-                'appoint_no'    => str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT),
-                'name'          => substr($next->applicant->first_name, 0, 1) . '. ' . $next->applicant->last_name,
-                'status'        => $next->status,
-                'window_number' => $next->window_number,
-                'is_transferred'=> $isTransferred,
-                'checked_in_at' => $next->checked_in_at?->format('g:i A'),
+                'appoint_no'     => str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT),
+                'name'           => substr($next->applicant->first_name, 0, 1) . '. ' . $next->applicant->last_name,
+                'status'         => $next->status,
+                'window_number'  => $next->window_number,
+                'is_transferred' => $isTransferred,
+                'checked_in_at'  => $next->checked_in_at?->format('g:i A'),
             ];
         })->values();
 

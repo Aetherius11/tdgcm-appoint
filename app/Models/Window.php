@@ -11,7 +11,6 @@ class Window extends Model
 
     public function principals(): BelongsToMany
     {
-        // This links back to your Departments/Principals table
-        return $this->belongsToMany(Principal::class, 'department_window', 'window_id', 'department_id');
+        return $this->belongsToMany(Principal::class, 'principal_window', 'window_id', 'principal_id');
     }
 }

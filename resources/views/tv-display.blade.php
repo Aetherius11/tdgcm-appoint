@@ -13,7 +13,6 @@
         .counter-grid {
             display: grid;
             grid-template-columns: 120px 170px 1fr 190px;
-            grid-template-rows: auto repeat(12, 1fr);
             height: 100%;
         }
         .c-hdr {
@@ -192,6 +191,7 @@
     function updateCounters(counters) {
         const grid = document.getElementById('counter-grid');
         while (grid.children.length > 4) grid.removeChild(grid.lastChild);
+        grid.style.gridTemplateRows = `auto repeat(${counters.length || 1}, 1fr)`;
 
         counters.forEach(c => {
             const name = c.name ? c.name.slice(0, 22) : null;

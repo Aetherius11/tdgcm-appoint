@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Window;
-use App\Models\Purpose;
-use App\Models\Principal;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -80,15 +78,96 @@ class WindowStaffController extends Controller
             ->whereDate('transaction_completed_at', today())
             ->count();
 
-        return view('WindowStaff', compact(
-            'availableWindows', 
-            'currentAppointment', 
-            'nextQueue', 
-            'windowId', 
-            'currentWindow',
-            'todayCompleted', 
-            'todayTotal'
-        ));
+        $availableWindows = $this->getWindowsForUser();
+
+        return view('WindowStaff', compact('pendingAppointments', 'currentAppointment', 'nextQueue', 'windowNumber', 'availableWindows', 'todayCompleted', 'todayTotal'));
+    }
+
+    /**
+     * Display the transaction history for the window staff
+     */
+    public function transactionHistory(Request $request)
+    {
+        $windowNumber = session('staff_window_number', 1);
+        $filterDate = $request->input('filter_date', now()->toDateString());
+        $search = $request->input('search', '');
+
+        // Get all completed appointments for this window
+        $query = Appointment::where('window_number', $windowNumber)
+            ->where('status', 'completed')
+            ->with(['applicant', 'purpose', 'timeSlot']);
+
+        // Apply date filter
+        if ($filterDate) {
+            $query->whereDate('transaction_completed_at', $filterDate);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $query->whereHas('applicant', function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orWhere('appoint_no', 'like', "%{$search}%");
+        }
+
+        $appointments = $query->orderBy('transaction_completed_at', 'desc')->paginate(20);
+
+        // Calculate statistics
+        $stats = $this->calculateStats($windowNumber, $filterDate);
+
+        return view('transaction-history', compact('appointments', 'windowNumber', 'stats', 'filterDate', 'search'));
+    }
+
+    /**
+     * Calculate statistics for the transaction history
+     */
+    private function calculateStats($windowNumber, $filterDate = null)
+    {
+        $query = Appointment::where('window_number', $windowNumber)
+            ->where('status', 'completed');
+
+        if ($filterDate) {
+            $query->whereDate('transaction_completed_at', $filterDate);
+        }
+
+        $completed = $query->count();
+
+        // Calculate average service time
+        $appointments = $query->get();
+        $totalServiceTime = 0;
+        $countWithTimes = 0;
+
+        foreach ($appointments as $apt) {
+            if ($apt->served_at && $apt->transaction_completed_at) {
+                $serviceTime = $apt->served_at->diffInSeconds($apt->transaction_completed_at);
+                $totalServiceTime += $serviceTime;
+                $countWithTimes++;
+            }
+        }
+
+        $avgServiceTime = $countWithTimes > 0 ? $totalServiceTime / $countWithTimes : 0;
+
+        // Calculate average wait time (from called_at to served_at)
+        $totalWaitTime = 0;
+        $countWithWait = 0;
+
+        foreach ($appointments as $apt) {
+            if ($apt->called_at && $apt->served_at) {
+                $waitTime = $apt->called_at->diffInSeconds($apt->served_at);
+                $totalWaitTime += $waitTime;
+                $countWithWait++;
+            }
+        }
+
+        $avgWaitTime = $countWithWait > 0 ? $totalWaitTime / $countWithWait : 0;
+
+        return [
+            'total_completed' => $completed,
+            'avg_service_time' => $avgServiceTime,
+            'avg_wait_time' => $avgWaitTime,
+        ];
     }
 
     /**
@@ -96,11 +175,32 @@ class WindowStaffController extends Controller
      */
     public function changeWindow(Request $request)
     {
-        $windowId = $request->input('window_id');
-        session(['staff_window_id' => $windowId]);
-        
-        $window = Window::find($windowId);
-        return back()->with('success', "You are now assigned to {$window->name}.");
+        $windowId = $request->input('window_number');
+        $window   = Window::find($windowId);
+
+        if (!$window) {
+            return back()->with('error', 'Invalid window selection.');
+        }
+
+        $allowed = $this->getWindowsForUser()->contains('id', $window->id);
+        if (!$allowed) {
+            return back()->with('error', 'Window ' . $window->name . ' is not assigned to your department.');
+        }
+
+        session(['staff_window_number' => $window->id]);
+
+        return back()->with('success', "You are now assigned to Window {$window->name}.");
+    }
+
+    private function getWindowsForUser()
+    {
+        $principal = auth()->user()?->team;
+
+        if ($principal && $principal->windows()->exists()) {
+            return $principal->windows()->orderBy('windows.id')->get();
+        }
+
+        return Window::orderBy('id')->get();
     }
 
     /**

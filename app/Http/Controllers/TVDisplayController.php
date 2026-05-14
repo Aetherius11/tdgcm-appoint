@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Window;
 use App\Models\Appointment;
 use Illuminate\Http\JsonResponse;
 
@@ -18,8 +19,11 @@ class TVDisplayController extends Controller
     private function buildCounters(): array
     {
         $counters = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $windowStatus = \Cache::get("window_status_{$i}", 'closed');
+
+        // 2. Initialize counters based on your database windows instead of a hard-coded loop
+        foreach ($windowModels as $window) {
+            // Using window ID for cache lookup to maintain individual window states
+            $windowStatus = Cache::get("window_status_{$window->id}", 'closed');
             $defaultStatus = $windowStatus === 'break' ? 'On Break' : 'Vacant';
             $counters[$i] = [
                 'counter'       => $i,

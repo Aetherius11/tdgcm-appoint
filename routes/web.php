@@ -8,6 +8,20 @@ use App\Http\Controllers\WindowStaffController;
 use Illuminate\Support\Facades\Route;
 
 
+
+// Staff Login Routes
+Route::get('/staff/login', [App\Http\Controllers\Auth\StaffLoginController::class, 'showLoginForm'])->name('staff.login');
+Route::post('/staff/login', [App\Http\Controllers\Auth\StaffLoginController::class, 'login'])->name('staff.login.submit');
+
+// Protect the WindowStaff page
+Route::middleware(['auth'])->group(function () {
+    Route::get('/WindowStaff', function () {
+        return view('window-staff'); // Your existing staff panel view
+    })->name('staff.dashboard');
+});
+
+
+
 Route::get('/api/purposes/{principalId}', function ($principalId) {
     // We find the Department (Principal) first, 
     // then get the purposes linked specifically to it.

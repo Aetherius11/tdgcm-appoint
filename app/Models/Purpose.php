@@ -13,6 +13,12 @@ class Purpose extends Model
         return $this->belongsTo(Principal::class, 'principal_id');
     }
 
+    public function principals()
+    {
+        // Ensure the table name 'principal_purpose' matches your conjunction table
+        return $this->belongsToMany(Principal::class, 'principal_purpose');
+    }
+
     public function timeAvailabilities(): BelongsToMany
     {
         // Ensure the table name here matches exactly what you created in SQL

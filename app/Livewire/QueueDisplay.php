@@ -11,19 +11,13 @@ class QueueDisplay extends Component
     {
         $counters = [];
 
-        // Initialize 12 counters
         for ($i = 1; $i <= 12; $i++) {
-            $counters[$i] = [
-                'counter' => $i,
-                'appointment' => null,
-                'status' => 'Vacant'
-            ];
+            $counters[$i] = ['counter' => $i, 'appointment' => null, 'status' => 'Vacant'];
         }
 
-        // Get today's appointments with assigned counters
         $appointments = Appointment::with('applicant')
             ->whereDate('appointment_date', today())
-            ->whereIn('status', ['ready', 'ongoing'])
+            ->whereIn('status', ['calling', 'serving', 'on_hold'])
             ->whereNotNull('counter_number')
             ->orderBy('counter_number')
             ->get();
@@ -33,22 +27,46 @@ class QueueDisplay extends Component
                 $counters[$appointment->counter_number] = [
                     'counter' => $appointment->counter_number,
                     'appointment' => $appointment,
-                    'status' => $appointment->status === 'ongoing' ? 'Ongoing' : 'Ready'
+                    'status' => match($appointment->status) {
+                        'calling' => 'Calling',
+                        'serving' => 'Serving',
+                        'on_hold' => 'On Hold',
+                        default   => ucfirst($appointment->status),
+                    },
                 ];
             }
         }
 
-        // Get the most recently called appointment for the large display
         $currentCall = Appointment::with('applicant')
-            ->whereDate('appointment_date', today())
-            ->where('status', 'ongoing')
+            ->whereIn('status', ['calling', 'serving'])
             ->whereNotNull('called_at')
+            ->where(function ($q) {
+                $q->whereDate('appointment_date', today())
+                  ->orWhere(function ($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
             ->orderBy('called_at', 'desc')
             ->first();
 
+        $upNext = Appointment::with('applicant')
+            ->whereIn('status', ['pending', 'approved'])
+            ->whereNotNull('checked_in_at')
+            ->whereNull('window_number')
+            ->where(function ($q) {
+                $q->whereDate('appointment_date', today())
+                  ->orWhere(function ($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
+            ->orderBy('checked_in_at', 'asc')
+            ->take(5)
+            ->get();
+
         return view('livewire.queue-display', [
-            'counters' => $counters,
-            'currentCall' => $currentCall
+            'counters'    => $counters,
+            'currentCall' => $currentCall,
+            'upNext'      => $upNext,
         ]);
     }
 }

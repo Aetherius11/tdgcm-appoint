@@ -191,6 +191,7 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'qr_data' => 'required|string',
+            'guard_override' => 'nullable|boolean',
         ]);
 
         try {
@@ -301,7 +302,60 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            // Get the appointment end time
+            // Current Philippine time
+            $now = \Carbon\Carbon::now()->setTimezone('Asia/Manila');
+
+            $appointmentDate = \Carbon\Carbon::parse($appointment->appointment_date)->startOfDay();
+            $today = $now->copy()->startOfDay();
+            $guardOverride = $request->boolean('guard_override');
+
+            // Block check-in on the wrong date unless guard overrides
+            if (!$appointmentDate->equalTo($today)) {
+                if (!$guardOverride) {
+                    $isEarly = $appointmentDate->greaterThan($today);
+                    $daysAway = (int) abs($appointmentDate->diffInDays($today));
+                    return response()->json([
+                        'success' => false,
+                        'status' => 'wrong_date',
+                        'is_early' => $isEarly,
+                        'message' => $isEarly
+                            ? "This appointment is for {$appointmentDate->format('M d, Y')} — {$daysAway} day(s) from now. Check-in is not allowed yet."
+                            : "This appointment was for {$appointmentDate->format('M d, Y')}. Check-in can only be done on the appointment date.",
+                        'appointment' => [
+                            'appoint_no' => $appointment->appoint_no,
+                            'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                            'principal' => $appointment->principal->name ?? 'N/A',
+                            'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
+                            'date' => $appointmentDate->format('M d, Y'),
+                            'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                        ],
+                    ]);
+                }
+
+                // Guard override: check in regardless of date
+                $appointment->update([
+                    'status' => 'approved',
+                    'checked_in_at' => $now,
+                    'remarks' => 'Guard override: checked in on ' . $now->format('M d, Y') . ' (scheduled: ' . $appointmentDate->format('M d, Y') . ')',
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'status' => 'checked_in',
+                    'message' => 'Successfully checked in! (Guard override applied)',
+                    'appointment' => [
+                        'appoint_no' => $appointment->appoint_no,
+                        'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                        'principal' => $appointment->principal->name ?? 'N/A',
+                        'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
+                        'date' => $appointmentDate->format('M d, Y'),
+                        'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                        'checked_in_at' => $now->format('h:i A'),
+                    ],
+                ]);
+            }
+
+            // Get the appointment end time (today's appointments only)
             $appointmentDateTime = \Carbon\Carbon::parse($appointment->appointment_date);
             $endTime = null;
 
@@ -311,9 +365,6 @@ class AppointmentController extends Controller
                 $appointmentDateTime = $appointmentDateTime->setTime((int)$hour, (int)$minute);
                 $endTime = $appointmentDateTime;
             }
-
-            // Current Philippine time
-            $now = \Carbon\Carbon::now()->setTimezone('Asia/Manila');
 
             // Check if appointment is expired (more than 1 hour past end time)
             if ($endTime && $now->diffInMinutes($endTime, false) < -60) {

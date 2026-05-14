@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body { font-family: 'Instrument Sans', sans-serif; }
@@ -127,7 +128,7 @@
                                 <div class="grid grid-cols-2 gap-3 text-sm">
                                     <div><span class="text-gray-500">Appointment ID:</span> <span id="detail_id" class="font-semibold"></span></div>
                                     <div><span class="text-gray-500">Name:</span> <span id="detail_name" class="font-semibold"></span></div>
-                                    <div><span class="text-gray-500">Principal:</span> <span id="detail_principal" class="font-semibold"></span></div>
+                                    <div><span class="text-gray-500">Department:</span> <span id="detail_principal" class="font-semibold"></span></div>
                                     <div><span class="text-gray-500">Purpose:</span> <span id="detail_purpose" class="font-semibold"></span></div>
                                     <div><span class="text-gray-500">Date:</span> <span id="detail_date" class="font-semibold"></span></div>
                                     <div><span class="text-gray-500">Time Slot:</span> <span id="detail_time" class="font-semibold"></span></div>
@@ -192,12 +193,20 @@
     </footer>
 
     <script>
-    // CSRF Token
+    // CSRF Token (fallback — prefer reading from cookie on each request)
     const CSRF_TOKEN = '{{ csrf_token() }}';
+
+    // Always read the freshest CSRF token available
+    function getFreshCsrfToken() {
+        const cookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('XSRF-TOKEN='));
+        if (cookie) return decodeURIComponent(cookie.slice('XSRF-TOKEN='.length));
+        return document.querySelector('meta[name="csrf-token"]')?.content || CSRF_TOKEN;
+    }
 
     // Recent scans storage
     let recentScans = [];
     let isProcessing = false;
+    let pendingOverrideQrData = null;
     let lastScannedCode = '';
     let lastScanTime = 0;
 
@@ -442,7 +451,7 @@
     }
 
     // Process QR Code data
-    function processQRCode(qrData) {
+    function processQRCode(qrData, guardOverride = false) {
         if (isProcessing) {
             console.log('Already processing, skipping...');
             return;
@@ -455,18 +464,27 @@
 
         fetch('{{ route("qr.scan") }}', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'X-XSRF-TOKEN': getFreshCsrfToken(),
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ qr_data: qrData })
+            body: JSON.stringify({ qr_data: qrData, guard_override: guardOverride })
         })
         .then(response => {
             console.log('Response status:', response.status);
+            if (response.status === 419) {
+                // Session expired — reload to get a fresh session and token
+                showStatusMessage('error', 'Session Expired', 'Your session has expired. Refreshing the page...');
+                setTimeout(() => location.reload(), 2000);
+                isProcessing = false;
+                return null;
+            }
             return response.json();
         })
         .then(data => {
+            if (!data) return;
             console.log('Response data:', data);
             handleScanResult(data);
             isProcessing = false;
@@ -569,6 +587,39 @@
                 playSound('error');
                 break;
 
+            case 'wrong_date':
+                pendingOverrideQrData = null;
+                iconEl.className = 'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-500 text-white';
+                iconEl.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                titleEl.textContent = data.is_early ? '⚠ Wrong Date — Too Early' : '⚠ Wrong Date — Past Appointment';
+                titleEl.className = 'text-lg font-bold text-amber-800';
+                textEl.textContent = data.message;
+                statusEl.className = 'rounded-xl p-6 mb-6 bg-amber-100 border border-amber-200';
+
+                if (data.appointment) {
+                    showAppointmentDetails(data.appointment);
+                    // Store raw qr_data for the potential override
+                    pendingOverrideQrData = data.appointment.appoint_no
+                        ? JSON.stringify({ appointment_no: data.appointment.appoint_no })
+                        : null;
+                }
+
+                // Show override button for guard
+                if (pendingOverrideQrData) {
+                    const overrideBtn = document.createElement('button');
+                    overrideBtn.id = 'override_btn';
+                    overrideBtn.className = 'mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg transition-colors';
+                    overrideBtn.textContent = 'Override — Allow Check-in';
+                    overrideBtn.onclick = overrideConfirm;
+                    const existing = document.getElementById('override_btn');
+                    if (existing) existing.remove();
+                    statusEl.appendChild(overrideBtn);
+                }
+
+                addToRecentScans(data, 'warning');
+                playSound('warning');
+                break;
+
             case 'already_checked_in':
                 iconEl.className = 'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500 text-white';
                 iconEl.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
@@ -576,11 +627,11 @@
                 titleEl.className = 'text-lg font-bold text-blue-800';
                 textEl.textContent = data.message;
                 statusEl.className = 'rounded-xl p-6 mb-6 bg-blue-100 border border-blue-200';
-                
+
                 if (data.appointment) {
                     showAppointmentDetails(data.appointment);
                 }
-                
+
                 addToRecentScans(data, 'info');
                 break;
 
@@ -596,6 +647,9 @@
         // Clear status after 15 seconds
         setTimeout(() => {
             statusEl.classList.add('hidden');
+            const btn = document.getElementById('override_btn');
+            if (btn) btn.remove();
+            pendingOverrideQrData = null;
         }, 15000);
     }
 
@@ -626,6 +680,15 @@
         } else {
             txHistorySection.classList.add('hidden');
         }
+    }
+
+    function overrideConfirm() {
+        if (!pendingOverrideQrData) return;
+        const qrData = pendingOverrideQrData;
+        pendingOverrideQrData = null;
+        const btn = document.getElementById('override_btn');
+        if (btn) btn.remove();
+        processQRCode(qrData, true);
     }
 
     function addToRecentScans(data, type) {
@@ -719,6 +782,11 @@
                 break;
         }
     }
+
+    // Keep session alive every 10 minutes so long-running guard sessions don't expire
+    setInterval(function() {
+        fetch('{{ route("qr.scanner") }}', { method: 'GET', credentials: 'same-origin' }).catch(() => {});
+    }, 10 * 60 * 1000);
 
     // Allow Enter key for manual input
     document.getElementById('manual_appoint_no').addEventListener('keypress', function(e) {

@@ -37,7 +37,7 @@
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Today</div>
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Tickets</div>
                 <div class="text-3xl font-bold text-gray-800 mt-1">{{ $appointments->total() }}</div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -85,7 +85,7 @@
                     <select name="filter_type" id="filter_type" onchange="toggleFilters()" 
                         class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
                         <option value="all">All Appointments</option>
-                        <option value="principal" {{ request('filter_type') == 'principal' ? 'selected' : '' }}>By Principal</option>
+                        <option value="principal" {{ request('filter_type') == 'principal' ? 'selected' : '' }}>By Department</option>
                         <option value="purpose" {{ request('filter_type') == 'purpose' ? 'selected' : '' }}>By Purpose</option>
                     </select>
                 </div>
@@ -98,9 +98,9 @@
 
                 <!-- Dynamic Filter Sections -->
                 <div id="principal_section" class="flex flex-col gap-1 {{ request('filter_type') == 'principal' ? '' : 'hidden' }} lg:col-span-2">
-                    <label class="text-xs font-bold text-gray-500 uppercase">Select Principal</label>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Select Department</label>
                     <select name="principal_id" onchange="this.form.submit()" class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                        <option value="">-- All Principals --</option>
+                        <option value="">-- All Departments --</option>
                         @foreach(\App\Models\Principal::all() as $p)
                             <option value="{{ $p->id }}" {{ request('principal_id') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                         @endforeach
@@ -127,7 +127,7 @@
                         <tr class="bg-[#F9FAFB] border-b border-gray-200">
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Appoint ID</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Applicant Name</th>
-                            <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Principal</th>
+                            <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Purpose</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Time Slot</th>

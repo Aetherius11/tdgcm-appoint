@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue Display - TDG Crew Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <meta http-equiv="refresh" content="5">
     @livewireStyles
     <style>
         .tcm-navy { background-color: #003366; }
@@ -14,7 +15,7 @@
     </style>
 </head>
 <body class="bg-gray-100 m-0 p-0 font-sans">
-    <div wire:poll.3s class="min-h-screen p-4">
+    <div class="min-h-screen p-4">
 
         <!-- Header -->
         <div class="bg-white border border-gray-300 rounded-lg shadow-sm mb-4 p-4 flex items-center">

@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\LoginResponse;
+use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -29,6 +32,29 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->app->instance(LogoutResponse::class, new class implements LogoutResponse {
+            public function toResponse($request) {
+                return redirect('/login');
+            }
+        });
+
+        $roleRedirect = function ($request) {
+            $user = $request->user();
+            if ($user?->hasRole('admin')) return redirect('/admin');
+            if ($user?->hasRole('staff')) return redirect()->route('Window.Staff');
+            return redirect()->route('appointments.index');
+        };
+
+        $this->app->instance(LoginResponse::class, new class($roleRedirect) implements LoginResponse {
+            public function __construct(private $redirect) {}
+            public function toResponse($request) { return ($this->redirect)($request); }
+        });
+
+        $this->app->instance(TwoFactorLoginResponse::class, new class($roleRedirect) implements TwoFactorLoginResponse {
+            public function __construct(private $redirect) {}
+            public function toResponse($request) { return ($this->redirect)($request); }
+        });
+
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);

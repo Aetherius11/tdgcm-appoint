@@ -15,24 +15,15 @@
 </head>
 <body class="bg-[#F4F7FA] text-[#1b1b18] min-h-screen">
 
-    <header class="w-full bg-[#111827] text-white shadow-lg">
-        <div class="max-w-7xl mx-auto flex justify-between items-center py-6 px-6">
-            <div class="flex items-center gap-2">
-                <div class="bg-white p-1 rounded">
-                    <span class="text-black font-bold text-xs">TCM</span>
-                </div>
-                <h1 class="text-lg font-bold tracking-tight uppercase">EasyQue</h1>
+    <header class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-2">
+            @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+            @if($companyLogo)
+            <div class="bg-white p-1 rounded-md">
+                <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" class="h-8 w-8 object-contain">
             </div>
-
-            <nav class="hidden lg:flex gap-5 text-[11px] font-bold uppercase tracking-widest text-gray-300">
-
-            </nav>
-
-            <div class="flex items-center gap-4">
-                 <button class="text-gray-400 hover:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                 </button>
-            </div>
+            @endif
+            <span class="font-bold text-xl">TDG Crew Management</span>
         </div>
     </header>
 

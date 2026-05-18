@@ -3,24 +3,20 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CompanyResource\Pages;
-use App\Filament\Resources\CompanyResource\RelationManagers;
 use App\Models\Company;
 use Filament\Forms;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class CompanyResource extends Resource
 {
     protected static ?string $model = Company::class;
 
-    // This puts the resource into the "System Maintenance" group
     protected static ?string $navigationGroup = 'System Maintenance';
-    
-    // Use this to change the icon (e.g., a building icon)
+
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 2;
 
@@ -31,14 +27,21 @@ class CompanyResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(100),
-                Forms\Components\TextInput::make('branding_logo')
-                    ->maxLength(255)
-                    ->default(null),
-                Forms\Components\Textarea::make('privacy_policy')
-                    ->columnSpanFull(),
+                FileUpload::make('branding_logo')
+                    ->label('Branding Logo')
+                    ->image()
+                    ->imageEditor()
+                    ->disk('public')
+                    ->directory('branding')
+                    ->visibility('public')
+                    ->imagePreviewHeight('120')
+                    ->maxSize(2048)
+                    ->helperText('PNG, JPG, SVG — max 2 MB. Appears in all page headers.'),
+                Forms\Components\Textarea::make('privacy_policy'),
                 Forms\Components\Toggle::make('is_active')
                     ->required(),
-            ]);
+            ])
+            ->columns(1);
     }
 
     public static function table(Table $table): Table
@@ -47,8 +50,10 @@ class CompanyResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('branding_logo')
-                    ->searchable(),
+                Tables\Columns\ImageColumn::make('branding_logo')
+                    ->label('Logo')
+                    ->disk('public')
+                    ->height(40),
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -75,9 +80,7 @@ class CompanyResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array

@@ -14,21 +14,25 @@
 <body class="bg-[#F4F7FA] min-h-screen">
 
     <!-- Header -->
-    <header class="w-full bg-[#111827] text-white shadow-lg">
-        <div class="max-w-7xl mx-auto flex justify-between items-center py-3 px-6">
-            <div class="flex items-center gap-2">
-                <div class="bg-white p-1 rounded">
-                    <span class="text-black font-bold text-xs">TCM</span>
+    <header class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-2">
+                @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+                @if($companyLogo)
+                <div class="bg-white p-1 rounded-md">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" class="h-8 w-8 object-contain">
                 </div>
-                <h1 class="text-lg font-bold tracking-tight uppercase">EasyQue Guard Dashboard</h1>
+                @endif
+                <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
-            <nav class="flex gap-4 text-sm">
-                <a href="{{ route('qr.scanner') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-                    QR Scanner
-                </a>
-                <a href="{{ route('appointment.create') }}" class="hover:text-blue-400 transition">New Appointment</a>
-            </nav>
+            <a href="{{ route('qr.scanner') }}" target="_blank" rel="noopener noreferrer" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition text-lg">QR Scanner</a>
+            <a href="{{ route('appointment.create') }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">New Appointment</a>
+        </div>
+        <div class="flex items-center space-x-4">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-bold hover:bg-gray-300 transition">Sign Out</button>
+            </form>
         </div>
     </header>
 
@@ -91,7 +95,7 @@
                 </div>
 
                 <div class="flex items-end">
-                    <a href="{{ url()->current() }}" class="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium px-2 py-2.5">
+                    <a href="{{ url()->current() }}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium px-2 py-2.5">
                         ↻ Reset All Filters
                     </a>
                 </div>
@@ -225,7 +229,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 text-center">
-                                    <a href="{{ route('appointment.show', $appointment) }}" 
+                                    <a href="{{ route('appointment.show', $appointment) }}" target="_blank" rel="noopener noreferrer"
                                        class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-blue-200">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         View

@@ -19,12 +19,17 @@
     <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center space-x-6">
             <div class="flex items-center space-x-2">
-                <img src="{{ asset('tdg_logo.png') }}" alt="Logo" class="h-10">
+                @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+                @if($companyLogo)
+                <div class="bg-white p-1 rounded-md">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" class="h-8 w-8 object-contain">
+                </div>
+                @endif
                 <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
-            <a href="/" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
-            <a href="{{ route('Window.Staff') }}" class="text-gray-300 hover:text-white font-bold transition text-lg">Counter</a>
-            <a href="{{ route('window.transaction-history') }}" class="text-gray-300 hover:text-white font-bold transition text-lg">Transaction History</a>
+            <a href="/" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
+            <a href="{{ route('Window.Staff') }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Counter</a>
+            <a href="{{ route('window.transaction-history') }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Transaction History</a>
         </div>
         <div class="flex items-center space-x-4">
             <!-- Window Number Dropdown -->
@@ -57,12 +62,13 @@
             <div class="grid grid-cols-6 gap-6 mb-10 px-4">
                 <!-- Notify Button - enabled when there's a checked-in appointment in queue AND no current appointment being served -->
                 @php
+                    $windowStatus = session('window_status', 'closed');
                     $firstInQueue = isset($nextQueue) && $nextQueue->isNotEmpty() ? $nextQueue->whereNotIn('status', ['on_hold'])->first() : null;
                     $isCalling = isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'calling';
                     $isServing = isset($currentAppointment) && $currentAppointment && $currentAppointment->status === 'serving';
                     // Re-call current person if still in 'calling', or call next if no active appointment
-                    $notifyId   = $isCalling ? $currentAppointment->id : ($firstInQueue ? $firstInQueue->id : null);
-                    $canNotify  = $notifyId && !$isServing;
+                    $notifyId   = $isCalling ? $currentAppointment->id : $firstInQueue?->id;
+                    $canNotify  = $notifyId && !$isServing && $windowStatus === 'open';
                 @endphp
                 @if($canNotify)
                     <form action="{{ route('window.notify') }}" method="POST">
@@ -167,7 +173,7 @@
                 <!-- Current Window Display -->
                 <div class="bg-light-blue-zone p-6 rounded-xl shadow-inner flex flex-col">
                     <div class="tcm-navy text-white text-center py-8 text-4xl font-bold mb-6 rounded-t-lg">
-                        Window {{ $windowNumber }}
+                        Window {{ $windowName }}
                     </div>
 
                     @if(isset($currentAppointment) && $currentAppointment)
@@ -223,7 +229,7 @@
                     <div class="tcm-navy text-white text-center py-8 text-4xl font-bold mb-6 rounded-t-lg">
                         Next Queue
                     </div>
-                    <div class="space-y-4 flex-grow">
+                    <div class="space-y-4 flex-grow" id="next-queue-list">
                         @if(isset($nextQueue) && $nextQueue->isNotEmpty())
                             @foreach($nextQueue as $next)
                                 <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm {{ $next->status === 'on_hold' ? 'border-2 border-orange-400 bg-orange-50' : '' }}">
@@ -308,7 +314,7 @@
                         </div>
                         @if($todayTotal > 5)
                             <div class="text-center mt-3">
-                                <a href="{{ route('window.transaction-history', ['filter_date' => now()->toDateString()]) }}" 
+                                <a href="{{ route('window.transaction-history', ['filter_date' => now()->toDateString()]) }}" target="_blank" rel="noopener noreferrer"
                                    class="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline">
                                     View all {{ $todayTotal }} transactions →
                                 </a>
@@ -416,11 +422,14 @@
         }
 
         // Close modal when clicking outside the modal content
-        document.getElementById('transferModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeTransferModal();
-            }
-        });
+        const transferModal = document.getElementById('transferModal');
+        if (transferModal) {
+            transferModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeTransferModal();
+                }
+            });
+        }
 
         // Close modal on Escape key
         document.addEventListener('keydown', function(e) {
@@ -451,6 +460,32 @@
         // Update timer every second
         setInterval(updateLiveTimer, 1000);
         updateLiveTimer(); // Initial call
+
+        // --- Queue-state polling ---
+        // Polls every 8 s. If the queue visible to this window changes (new
+        // transfer, ticket called, etc.) the page reloads so staff sees the
+        // updated Next Queue and Notify button without manual refresh.
+        let lastQueueState = null;
+
+        async function pollQueueState() {
+            try {
+                const res = await fetch('{{ route("window.queue-state") }}', {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const state = JSON.stringify(data.state);
+                if (lastQueueState !== null && lastQueueState !== state) {
+                    location.reload();
+                }
+                lastQueueState = state;
+            } catch (e) {}
+        }
+
+        // Initial snapshot after a short delay, then every 8 s
+        setTimeout(pollQueueState, 1500);
+        setInterval(pollQueueState, 8000);
     </script>
 </body>
 </html>

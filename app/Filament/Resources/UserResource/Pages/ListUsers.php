@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource;
 use App\Mail\UserInvitationMail;
 use App\Models\UserInvitation;
 use Filament\Actions;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -37,6 +38,16 @@ class ListUsers extends ListRecords
                         ->label('Full Name')
                         ->required()
                         ->maxLength(255),
+                    CheckboxList::make('roles')
+                        ->label('Role(s)')
+                        ->options([
+                            'admin' => 'Admin',
+                            'staff' => 'Window Staff',
+                            'guard' => 'Guard',
+                        ])
+                        ->default(['staff'])
+                        ->columns(3)
+                        ->required(),
                     Select::make('team_id')
                         ->label('Office Department')
                         ->relationship('team', 'name', fn ($query) => $query->orderBy('name'))
@@ -54,7 +65,8 @@ class ListUsers extends ListRecords
                         teamId: $data['team_id'] ?? null,
                         invitedByName: $user->name ?? 'Administrator',
                         invitedByEmail: $user->email ?? 'admin@system.com',
-                        expiresInDays: 7
+                        expiresInDays: 7,
+                        roles: $data['roles'] ?? ['staff'],
                     );
 
                     // Send the invitation email

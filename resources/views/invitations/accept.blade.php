@@ -82,6 +82,20 @@
                autocomplete="new-password">
     </div>
 
+    <!-- Assigned Role -->
+    <div class="mt-4">
+        <label class="block font-medium text-sm text-gray-700">Assigned Role(s)</label>
+        <div class="mt-1 flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+            @foreach($invitation->roles ?? ['staff'] as $role)
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                    {{ $role === 'admin' ? 'bg-green-100 text-green-800' : ($role === 'guard' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800') }}">
+                    {{ $role === 'admin' ? 'Admin' : ($role === 'guard' ? 'Guard' : 'Window Staff') }}
+                </span>
+            @endforeach
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Assigned by the administrator — cannot be changed here.</p>
+    </div>
+
     <!-- Two-Factor Authentication -->
     <div class="mt-6">
         <div class="p-4 bg-gray-50 rounded-md border border-gray-200">

@@ -41,12 +41,19 @@
     <!-- Header -->
     <header class="bg-white border border-gray-200 rounded-lg shadow-sm px-5 py-3 flex items-center flex-shrink-0">
         <div class="flex items-center gap-3">
+            @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+            @if($companyLogo)
+            <div class="bg-white border border-gray-200 rounded-md p-1 flex-shrink-0">
+                <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" class="h-9 w-9 object-contain">
+            </div>
+            @else
             <div class="w-9 h-9 bg-[#003366] rounded-full flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5 text-white" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="2"/>
                     <path d="M10 20 L18 12 L22 28 L30 20" stroke="currentColor" stroke-width="2" fill="none"/>
                 </svg>
             </div>
+            @endif
             <span class="text-xl font-bold text-navy">TDG Crew Management</span>
         </div>
         <div id="tv-datetime" class="ml-auto text-gray-500 text-base font-medium">
@@ -115,7 +122,7 @@
                         </div>
                         <div id="ns-counter" class="bg-sky py-5 text-center text-8xl font-black leading-none text-navy">
                             @if($currentCall)
-                                Counter {{ $currentCall->counter_number }}
+                                {{ $counters[$currentCall->counter_number]['counter'] ?? ('Counter ' . $currentCall->counter_number) }}
                             @else
                                 <span class="text-gray-300">———</span>
                             @endif
@@ -148,7 +155,7 @@
                                         @if($next->status === 'on_hold')
                                             <span class="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">On Hold</span>
                                         @elseif($isTransferred)
-                                            <span class="bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">→ Ctr {{ $next->window_number }}</span>
+                                            <span class="bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">→ {{ $counters[$next->window_number]['counter'] ?? ('Ctr ' . $next->window_number) }}</span>
                                         @endif
                                     </div>
                                     <div class="font-bold text-base text-navy truncate">
@@ -184,6 +191,8 @@
             return `<span class="bg-green-100 text-green-700 px-4 py-1.5 rounded-full font-bold text-xl">Serving</span>`;
         if (status === 'On Break')
             return `<span class="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-full font-bold text-xl">On Break</span>`;
+        if (status === 'Closed')
+            return `<span class="text-gray-400 font-bold text-xl">—</span>`;
         return `<span class="bg-gray-100 text-gray-500 px-4 py-1.5 rounded-full font-bold text-xl">Vacant</span>`;
     }
 
@@ -228,7 +237,7 @@
         if (call) {
             nsAppt.innerHTML = esc(call.appoint_no);
             nsName.innerHTML = `<div class="text-8xl font-black leading-tight text-navy text-center w-full px-4">${esc(call.name)}</div>`;
-            nsCtr.innerHTML  = `Counter ${esc(call.counter_number)}`;
+            nsCtr.innerHTML  = esc(call.counter_name || ('Counter ' + call.counter_number));
             nsAppt.className = 'bg-sky py-5 text-center text-8xl font-black leading-none text-navy';
             nsCtr.className  = 'bg-sky py-5 text-center text-8xl font-black leading-none text-navy';
         } else {
@@ -251,7 +260,7 @@
                 : (item.is_transferred ? 'bg-purple-50 border-purple-300' : 'bg-sky border-gray-200');
             const badge = item.status === 'on_hold'
                 ? '<span class="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">On Hold</span>'
-                : (item.is_transferred ? `<span class="bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">→ Ctr ${esc(item.window_number)}</span>` : '');
+                : (item.is_transferred ? `<span class="bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">→ ${esc(item.window_name || ('Ctr ' + item.window_number))}</span>` : '');
             const time = item.checked_in_at ? `<div class="text-xs text-gray-500">${esc(item.checked_in_at)}</div>` : '';
             return `<div class="border rounded-lg p-3 flex flex-col gap-1 ${bg}">
                 <div class="flex items-center gap-2">

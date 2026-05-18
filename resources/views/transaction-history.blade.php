@@ -19,8 +19,8 @@
                 <img src="{{ asset('tdg_logo.png') }}" alt="Logo" class="h-10">
                 <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
-            <a href="/" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
-            <a href="{{ route('Window.Staff') }}" class="text-gray-300 hover:text-white font-bold transition text-lg">Counter</a>
+            <a href="/" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
+            <a href="{{ route('Window.Staff') }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Counter</a>
         </div>
         <div class="flex items-center space-x-4">
             <form method="POST" action="{{ route('logout') }}">
@@ -91,7 +91,7 @@
                         <button type="submit" class="btn-blue bg-[#0056b3] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-800 transition h-[42px]">
                             Apply Filters
                         </button>
-                        <a href="{{ route('window.transaction-history') }}" class="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium px-4 py-2.5 h-[42px] inline-flex items-center">
+                        <a href="{{ route('window.transaction-history') }}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium px-4 py-2.5 h-[42px] inline-flex items-center">
                             Reset
                         </a>
                     </div>

@@ -86,13 +86,11 @@ class User extends Authenticatable implements FilamentUser
 
     public function isGuard(): bool
     {
-        // Restricted to guard-only if they have no staff or admin role
-        $roles = $this->roles ?? [];
-        return !in_array('admin', $roles) && !in_array('staff', $roles);
+        return in_array('guard', $this->roles ?? []);
     }
 
-    public function canAccessPanel(Panel $panel): bool
+    public function canAccessPanel(Panel $_panel): bool
     {
-        return $this->hasRole('admin') || $this->hasRole('staff');
+        return $this->hasRole('admin');
     }
 }

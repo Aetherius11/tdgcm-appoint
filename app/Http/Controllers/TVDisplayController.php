@@ -27,7 +27,11 @@ class TVDisplayController extends Controller
             $counters[$window->id] = [
                 'counter'       => $window->name,
                 'appointment'   => null,
-                'status'        => $windowStatus === 'break' ? 'On Break' : 'Vacant',
+                'status'        => match($windowStatus) {
+                    'break'  => 'On Break',
+                    'closed' => 'Closed',
+                    default  => 'Vacant',
+                },
                 'window_status' => $windowStatus,
             ];
         }
@@ -113,18 +117,20 @@ class TVDisplayController extends Controller
                 'appoint_no'     => str_pad(substr($currentCall->appoint_no, -4), 4, '0', STR_PAD_LEFT),
                 'name'           => substr($currentCall->applicant->first_name, 0, 1) . '. ' . $currentCall->applicant->last_name,
                 'counter_number' => $currentCall->counter_number,
+                'counter_name'   => $counters[$currentCall->counter_number]['counter'] ?? ('Counter ' . $currentCall->counter_number),
                 'status'         => $currentCall->status,
                 'call_key'       => $currentCall->appoint_no . '_' . ($currentCall->called_at?->timestamp),
             ];
         }
 
-        $upNextJson = $upNext->map(function ($next) {
+        $upNextJson = $upNext->map(function ($next) use ($counters) {
             $isTransferred = in_array($next->status, ['pending', 'approved']) && $next->window_number;
             return [
                 'appoint_no'     => str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT),
                 'name'           => substr($next->applicant->first_name, 0, 1) . '. ' . $next->applicant->last_name,
                 'status'         => $next->status,
                 'window_number'  => $next->window_number,
+                'window_name'    => isset($counters[$next->window_number]) ? $counters[$next->window_number]['counter'] : null,
                 'is_transferred' => $isTransferred,
                 'checked_in_at'  => $next->checked_in_at?->format('g:i A'),
             ];

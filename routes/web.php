@@ -1,11 +1,14 @@
 <?php
 
+use App\Models\Company;
 use App\Models\Purpose;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\UserInvitationController;
 use App\Http\Controllers\TVDisplayController;
 use App\Http\Controllers\WindowStaffController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 
 
@@ -80,12 +83,25 @@ Route::middleware([
     Route::post('/window/break', [WindowStaffController::class, 'startBreak'])->name('window.break');
     Route::post('/window/change-window', [WindowStaffController::class, 'changeWindow'])->name('window.change-window');
     Route::get('/window/transaction-history', [WindowStaffController::class, 'transactionHistory'])->name('window.transaction-history');
+    Route::get('/window/queue-state', [WindowStaffController::class, 'getQueueState'])->name('window.queue-state');
 });
 
 // API routes for real-time data (used by TV display) - public
 Route::get('/api/window-status', [WindowStaffController::class, 'getWindowStatus'])->name('api.window-status');
 Route::get('/api/queue-data', [WindowStaffController::class, 'getQueueData'])->name('api.queue-data');
 Route::get('/api/tv-data', [TVDisplayController::class, 'getData'])->name('api.tv-data');
+
+// Logo upload for admin
+Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified'])
+    ->post('/admin/upload-logo', function (Request $request) {
+        $request->validate(['logo' => 'required|image|max:2048', 'company_id' => 'required|integer']);
+
+        $path = $request->file('logo')->store('branding', 'public');
+
+        Company::findOrFail($request->company_id)->update(['branding_logo' => $path]);
+
+        return response()->json(['success' => true, 'path' => $path]);
+    })->name('admin.upload-logo');
 
 // User Invitation routes (public, token-based authentication)
 Route::get('/invite/{token}', [UserInvitationController::class, 'show'])->name('invitations.show');

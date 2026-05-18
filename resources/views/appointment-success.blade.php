@@ -7,21 +7,23 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="bg-gray-200 font-['Instrument_Sans']">
 
     <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;">
         
-        <div class="bg-white rounded-xl shadow-2xl overflow-hidden w-full max-w-[420px]" style="background: white; border-radius: 12px; overflow: hidden; width: 100%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+        <div id="appointment-card" class="bg-white rounded-xl shadow-2xl overflow-hidden w-full max-w-[420px]" style="background: white; border-radius: 12px; overflow: hidden; width: 100%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
             
             <div class="p-6 text-center" style="background-color: #28a745; color: white;">
-                <div style="display: flex; justify-content: center; margin-bottom: 12px;">
-                    <div style="background: white; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
-                        <svg style="width: 28px; height: 28px; color: #28a745;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                        </svg>
+                @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+                @if($companyLogo)
+                <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                    <div style="background: white; border-radius: 8px; padding: 6px; display: inline-flex; align-items: center; justify-content: center;">
+                        <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" style="height: 48px; width: 48px; object-fit: contain;">
                     </div>
                 </div>
+                @endif
                 <h2 class="text-xl font-bold" style="margin: 0; font-size: 1.25rem;">Booking Confirmed! ✓</h2>
                 <p class="text-sm opacity-90" style="margin-top: 4px; font-size: 0.875rem;">Your appointment has been successfully booked.</p>
             </div>
@@ -75,7 +77,11 @@
                     <button onclick="window.print()" style="flex: 1; background: white; border: 1px solid #ced4da; color: #495057; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h6a2 2 0 002-2z"></path></svg>
                         Save PDF
-                    
+                    </button>
+                    <button id="save-photo-btn" style="flex: 1; background: #28a745; border: none; color: white; font-weight: bold; padding: 10px; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Save Photo
+                    </button>
                 </div>
             </div>
             
@@ -84,6 +90,53 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.getElementById('save-photo-btn').addEventListener('click', function() {
+            const card = document.getElementById('appointment-card');
+            const button = this;
+            
+            // Show loading state
+            const originalText = button.innerHTML;
+            button.innerHTML = '<svg class="animate-spin" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Capturing...';
+            button.disabled = true;
+            
+            // Use html2canvas to capture the card
+            html2canvas(card, {
+                scale: 2, // Higher resolution
+                backgroundColor: null,
+                useCORS: true, // Allow cross-origin images (for QR code)
+                logging: false,
+                width: card.offsetWidth,
+                height: card.offsetHeight
+            }).then(canvas => {
+                // Convert canvas to blob and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const filename = 'appointment-{{ $appointment->appoint_no }}.png';
+                    
+                    link.download = filename;
+                    link.href = url;
+                    link.click();
+                    
+                    // Cleanup
+                    URL.revokeObjectURL(url);
+                    
+                    // Restore button
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 'image/png');
+            }).catch(err => {
+                console.error('Error capturing image:', err);
+                alert('Failed to save photo. Please try again or use Save PDF instead.');
+                
+                // Restore button
+                button.innerHTML = originalText;
+                button.disabled = false;
+            });
+        });
+    </script>
 
 </body>
 </html>

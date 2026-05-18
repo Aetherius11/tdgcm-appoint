@@ -7,7 +7,7 @@ use App\Models\Window;
 use App\Models\Purpose;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class WindowStaffController extends Controller
@@ -80,17 +80,9 @@ class WindowStaffController extends Controller
             ->count();
 
         $availableWindows = $this->getWindowsForUser();
+        $windowName = $availableWindows->firstWhere('id', $windowNumber)?->name ?? $windowNumber;
 
-        
-
-        return view('WindowStaff', compact(
-            'currentAppointment', 
-            'nextQueue', 
-            'windowId', 
-            'availableWindows', 
-            'todayCompleted', 
-            'todayTotal'
-        ));
+        return view('WindowStaff', compact('pendingAppointments', 'currentAppointment', 'nextQueue', 'windowNumber', 'windowName', 'availableWindows', 'todayCompleted', 'todayTotal'));
     }
 
     /**
@@ -197,33 +189,88 @@ class WindowStaffController extends Controller
     }
 
     /**
-     * Notify/Call the next applicant
+     * Notify/Call the next applicant to the window.
+     *
+     * Wrapped in a transaction with lockForUpdate() so that if two staff
+     * click "Call" at the same instant, the second request blocks until the
+     * first commits, then finds the appointment already in 'calling' status
+     * and returns gracefully instead of double-assigning.
      */
     public function notify(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
-        
-        // 1. Get window ID from session (matching the key we set in changeWindow)
-        $windowId = session('staff_window_id'); 
-        
-        // 2. Safely find the window
-        $window = \App\Models\Window::find($windowId);
+        $windowNumber  = session('staff_window_number', 1);
 
-        // 3. Check if window exists to prevent the "null" error
-        if (!$window) {
-            return back()->with('error', 'Window not found. Please select a window from the dropdown first.');
+        $windowStatus = \Cache::get("window_status_{$windowNumber}", 'closed');
+        if ($windowStatus !== 'open') {
+            return back()->with('error', 'Please open your counter before calling applicants.');
         }
 
-        $appointment = \App\Models\Appointment::findOrFail($appointmentId);
+        [$appointment, $errorKey] = DB::transaction(function () use ($appointmentId, $windowNumber) {
 
-        $appointment->update([
-            'status' => 'calling',
-            'called_at' => \Carbon\Carbon::now(),
-            'window_number' => $windowId,
-            'counter_number' => $window->name, // Now safe because we checked $window
-        ]);
+            if (!$appointmentId) {
+                $appointment = Appointment::whereDate('appointment_date', now()->toDateString())
+                    ->whereIn('status', ['pending', 'approved'])
+                    ->whereNull('window_number')
+                    ->whereNotNull('checked_in_at')
+                    ->orderBy('checked_in_at', 'asc')
+                    ->lockForUpdate()
+                    ->first();
 
-        return back()->with('success', "Applicant has been called to {$window->name}.");
+                if (!$appointment) {
+                    return [null, 'no_queue'];
+                }
+            } else {
+                $appointment = Appointment::where('id', $appointmentId)
+                    ->where(function ($q) use ($windowNumber) {
+                        $q->where(function ($inner) use ($windowNumber) {
+                            $inner->whereIn('status', ['pending', 'approved'])
+                                  ->where(function ($w) use ($windowNumber) {
+                                      $w->whereNull('window_number')
+                                        ->orWhere('window_number', $windowNumber);
+                                  });
+                        })
+                        ->orWhere(function ($inner) use ($windowNumber) {
+                            $inner->where('status', 'calling')
+                                  ->where('window_number', $windowNumber);
+                        });
+                    })
+                    ->whereNotNull('checked_in_at')
+                    ->where(function ($q) {
+                        $q->whereDate('appointment_date', now()->toDateString())
+                          ->orWhere(function ($q2) {
+                              $q2->whereNotNull('remarks')
+                                 ->where('remarks', 'like', 'Guard override:%');
+                          });
+                    })
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$appointment) {
+                    return [null, 'not_eligible'];
+                }
+            }
+
+            $appointment->update([
+                'status'         => 'calling',
+                'called_at'      => Carbon::now(),
+                'counter_number' => $windowNumber,
+                'window_number'  => $windowNumber,
+            ]);
+
+            return [$appointment, null];
+        });
+
+        if ($errorKey === 'no_queue') {
+            return back()->with('error', 'No applicants in queue.');
+        }
+
+        if ($errorKey === 'not_eligible') {
+            return back()->with('error', 'This applicant is not in the queue or has already been called.');
+        }
+
+        $windowName = Window::find($windowNumber)?->name ?? $windowNumber;
+        return back()->with('success', "Applicant has been called to Window {$windowName}.");
     }
 
     public function startService(Request $request)
@@ -271,6 +318,33 @@ class WindowStaffController extends Controller
         return back()->with('success', 'Ticket resumed.');
     }
 
+    /**
+     * Returns a lightweight snapshot of the queue relevant to this window.
+     * The Window Staff page polls this every 8 s and reloads if anything changed.
+     */
+    public function getQueueState(): JsonResponse
+    {
+        $windowNumber = session('staff_window_number', 1);
+
+        $state = Appointment::whereIn('status', ['pending', 'approved', 'on_hold', 'calling', 'serving'])
+            ->where(function ($q) {
+                $q->whereDate('appointment_date', now()->toDateString())
+                  ->orWhere(function ($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
+            ->where(function ($q) use ($windowNumber) {
+                $q->whereNull('window_number')
+                  ->orWhere('window_number', $windowNumber);
+            })
+            ->pluck('status', 'id');
+
+        return response()->json(['state' => $state]);
+    }
+
+    /**
+     * Transfer to another window
+     */
     public function transfer(Request $request)
     {
         $appointmentId = $request->input('appointment_id');
@@ -282,7 +356,8 @@ class WindowStaffController extends Controller
             'status' => 'pending',
         ]);
 
-        return back()->with('success', "Transferred successfully.");
+        $targetWindow = Window::find($windowNumber);
+        return back()->with('success', "Transferred to Window " . ($targetWindow?->name ?? $windowNumber) . ".");
     }
 
     public function openCounter(Request $request)
@@ -296,11 +371,24 @@ class WindowStaffController extends Controller
 
     public function closeCounter(Request $request)
     {
-        $windowId = session('staff_window_id');
-        Cache::put("window_status_{$windowId}", 'closed', now()->addHours(24));
-        session(['window_status' => 'closed']);
+        $windowNumber = session('staff_window_number', 1);
+        
+        // Check if there's a current appointment being served at this window
+        $currentAppointment = Appointment::whereDate('appointment_date', now()->toDateString())
+            ->where('window_number', $windowNumber)
+            ->whereIn('status', ['calling', 'serving', 'on_hold'])
+            ->first();
 
-        return back()->with('success', 'Counter is now CLOSED.');
+        if ($currentAppointment) {
+            $windowName = Window::find($windowNumber)?->name ?? $windowNumber;
+            return back()->with('error', "Cannot close Window {$windowName} while an applicant is being served. Please end or transfer the current appointment first.");
+        }
+
+        session(['window_status' => 'closed', 'window_closed_at' => Carbon::now()]);
+        \Cache::put("window_status_{$windowNumber}", 'closed', now()->addHours(24));
+
+        $windowName = Window::find($windowNumber)?->name ?? $windowNumber;
+        return back()->with('success', "Window {$windowName} is now CLOSED.");
     }
 
     public function startBreak(Request $request)
@@ -309,7 +397,16 @@ class WindowStaffController extends Controller
         Cache::put("window_status_{$windowId}", 'break', now()->addHours(24));
         session(['window_status' => 'break']);
 
-        return back()->with('success', 'You are now on BREAK.');
+        if ($currentAppointment) {
+            $windowName = Window::find($windowNumber)?->name ?? $windowNumber;
+            return back()->with('error', "Cannot go on break while an applicant is being served at Window {$windowName}. Please end or transfer the current appointment first.");
+        }
+
+        session(['window_status' => 'break', 'window_break_at' => Carbon::now()]);
+        \Cache::put("window_status_{$windowNumber}", 'break', now()->addHours(24));
+
+        $windowName = Window::find($windowNumber)?->name ?? $windowNumber;
+        return back()->with('success', "You are now on BREAK. Window {$windowName} is temporarily unavailable.");
     }
 
     /**

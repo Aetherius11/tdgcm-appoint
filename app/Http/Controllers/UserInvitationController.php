@@ -58,32 +58,25 @@ class UserInvitationController extends Controller
         // Check if user already exists
         $user = User::where('email', $invitation->email)->first();
 
+        $roles = $invitation->roles ?? ['staff'];
+
         if ($user) {
-            // Update existing user
             $user->update([
-                'name' => $validated['name'],
-                'password' => Hash::make($validated['password']),
+                'name'              => $validated['name'],
+                'password'          => Hash::make($validated['password']),
                 'email_verified_at' => now(),
+                'roles'             => $roles,
+                'current_team_id'   => $invitation->team_id ?? $user->current_team_id,
             ]);
-
-            // Assign to team if specified
-            if ($invitation->team_id) {
-                $user->update(['current_team_id' => $invitation->team_id]);
-            }
         } else {
-            // Create new user
-            $userData = [
-                'name' => $validated['name'],
-                'email' => $invitation->email,
-                'password' => Hash::make($validated['password']),
+            $user = User::create([
+                'name'              => $validated['name'],
+                'email'             => $invitation->email,
+                'password'          => Hash::make($validated['password']),
                 'email_verified_at' => now(),
-            ];
-
-            if ($invitation->team_id) {
-                $userData['current_team_id'] = $invitation->team_id;
-            }
-
-            $user = User::create($userData);
+                'roles'             => $roles,
+                'current_team_id'   => $invitation->team_id,
+            ]);
         }
 
         // Mark invitation as accepted
@@ -103,8 +96,7 @@ class UserInvitationController extends Controller
         // Log the user in
         Auth::login($user);
 
-        return redirect()->route('dashboard')
-            ->with('success', 'Your account has been set up successfully!');
+        return $this->roleRedirect()->with('success', 'Your account has been set up successfully!');
     }
 
     /**
@@ -121,7 +113,7 @@ class UserInvitationController extends Controller
 
         // Ensure they actually need to be here
         if (! $user->two_factor_secret || $user->two_factor_confirmed_at) {
-            return redirect()->route('dashboard');
+            return $this->roleRedirect();
         }
 
         // Generate QR code
@@ -173,8 +165,16 @@ class UserInvitationController extends Controller
             'two_factor_confirmed_at' => now(),
         ])->save();
 
-        return redirect()->route('dashboard')
+        return $this->roleRedirect()
             ->with('success', 'Two-factor authentication has been enabled successfully!');
+    }
+
+    private function roleRedirect(): \Illuminate\Http\RedirectResponse
+    {
+        $user = Auth::user();
+        if ($user?->hasRole('admin')) return redirect('/admin');
+        if ($user?->hasRole('staff')) return redirect()->route('Window.Staff');
+        return redirect()->route('appointments.index');
     }
 
     /**

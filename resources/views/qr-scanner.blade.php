@@ -60,17 +60,25 @@
 <body class="bg-[#F4F7FA] min-h-screen">
 
     <!-- Header -->
-    <header class="w-full bg-[#111827] text-white shadow-lg">
-        <div class="max-w-7xl mx-auto flex justify-between items-center py-3 px-6">
-            <div class="flex items-center gap-2">
-                <div class="bg-white p-1 rounded">
-                    <span class="text-black font-bold text-xs">TCM</span>
+    <header class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-2">
+                @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+                @if($companyLogo)
+                <div class="bg-white p-1 rounded-md">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" class="h-8 w-8 object-contain">
                 </div>
-                <h1 class="text-lg font-bold tracking-tight uppercase">EasyQue Guard Dashboard</h1>
+                @endif
+                <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
-            <nav class="flex gap-4 text-sm">
-                <a href="{{ route('appointments.index') }}" class="hover:text-blue-400 transition">Appointments List</a>
-            </nav>
+            <a href="{{ route('appointments.index') }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Appointments List</a>
+            <a href="{{ route('qr.scanner') }}" target="_blank" rel="noopener noreferrer" class="text-white font-bold transition text-lg">QR Scanner</a>
+        </div>
+        <div class="flex items-center space-x-4">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-bold hover:bg-gray-300 transition">Sign Out</button>
+            </form>
         </div>
     </header>
 

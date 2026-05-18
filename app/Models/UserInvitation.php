@@ -19,6 +19,7 @@ class UserInvitation extends Model
         'invited_by_name',
         'invited_by_email',
         'team_id',
+        'roles',
         'expires_at',
         'accepted_at',
         'user_id',
@@ -34,6 +35,7 @@ class UserInvitation extends Model
         return [
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
+            'roles' => 'array',
         ];
     }
 
@@ -107,21 +109,21 @@ class UserInvitation extends Model
         ?int $teamId = null,
         ?string $invitedByName = null,
         ?string $invitedByEmail = null,
-        int $expiresInDays = 7
+        int $expiresInDays = 7,
+        ?array $roles = null,
     ): self {
-        // Delete any existing pending invitations for this email
         static::where('email', $email)
             ->whereNull('accepted_at')
             ->delete();
 
         return static::create([
-            'email' => $email,
-            'token' => self::generateToken(),
-            'team_id' => $teamId, // This is your Office Department ID
-            'invited_by_name' => $invitedByName,
+            'email'            => $email,
+            'token'            => self::generateToken(),
+            'team_id'          => $teamId,
+            'roles'            => $roles ?? ['staff'],
+            'invited_by_name'  => $invitedByName,
             'invited_by_email' => $invitedByEmail,
-            // Add 24 hours to 'now' to ensure they have time to click
-            'expires_at' => now()->addDay(), 
+            'expires_at'       => now()->addDay(),
         ]);
     }
 }

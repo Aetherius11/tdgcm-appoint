@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+
 class Appointment extends Model
 {
     // 1. List the columns from your migration
@@ -46,8 +47,8 @@ class Appointment extends Model
                 $lastAppointment = static::whereDate('created_at', today())
                     ->orderBy('id', 'desc')
                     ->first();
-                $sequence = $lastAppointment ? (intval(substr($lastAppointment->appoint_no, -2)) + 1) : 1;
-                $appointment->appoint_no = 'A-'.$date.str_pad($sequence, 2, '0', STR_PAD_LEFT);
+                $sequence = $lastAppointment ? (intval(substr($lastAppointment->appoint_no, -4))) + 1 : 1;
+                $appointment->appoint_no = 'A-'.$date.str_pad($sequence, 4, '0', STR_PAD_LEFT);
             }
         });
     }
@@ -62,6 +63,12 @@ class Appointment extends Model
     public function principal(): BelongsTo
     {
         return $this->belongsTo(Principal::class);
+    }
+
+    public function window()
+    {
+        // We specify 'window_number' because that is the column name in your appointments table
+        return $this->belongsTo(Window::class, 'window_number');
     }
 
     // 4. Define the connection to the Purpose

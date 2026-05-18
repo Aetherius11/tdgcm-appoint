@@ -134,6 +134,7 @@
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Window</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Transaction History</th>
+                            <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Duration</th> 
                             <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Action</th>
                         </tr>
                     </thead>
@@ -223,6 +224,16 @@
                                             <span class="text-gray-400">No activity</span>
                                         @endif
                                     </div>
+                                </td>
+                                <td class="py-2 px-3 text-center">
+                                    @if($appointment->served_at && $appointment->transaction_completed_at)
+                                        @php
+                                            $duration = $appointment->served_at->diffInSeconds($appointment->transaction_completed_at);
+                                        @endphp
+                                        <span class="text-green-700 font-medium">{{ gmdate('i:s', $duration) }}</span>
+                                    @else
+                                        <span class="text-gray-400">--</span>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-4 text-center">
                                     <a href="{{ route('appointment.show', $appointment) }}" 

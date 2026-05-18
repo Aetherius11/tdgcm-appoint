@@ -86,7 +86,7 @@
             </div>
             
             <div style="padding: 12px; text-align: center; border-top: 1px solid #f1f1f1; background: #fafafa;">
-                <p style="font-size: 10px; color: #adb5bd; margin: 0; font-weight: bold; letter-spacing: 0.5px;">FAST BOOKING WITH TCM EASYQUE</p>
+                <p style="font-size: 10px; color: #adb5bd; margin: 0; font-weight: bold; letter-spacing: 0.5px;"></p>
             </div>
         </div>
     </div>

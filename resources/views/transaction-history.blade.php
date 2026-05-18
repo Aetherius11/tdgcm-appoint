@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction History - Window {{ $windowNumber }}</title>
+    <title>Transaction History - Window {{ $windowId }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tcm-navy { background-color: #003366; }
@@ -35,7 +35,7 @@
             
             <!-- Header -->
             <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">Transaction History - Window {{ $windowNumber }}</h1>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Transaction History - Window {{ $windowId }}</h1>
                 <p class="text-gray-600">View all completed transactions for your window</p>
             </div>
 

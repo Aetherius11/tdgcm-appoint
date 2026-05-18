@@ -23,15 +23,21 @@ class TimeAvailabilityResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('day_of_week')
-                    ->options([
-                        1 => 'Monday',
-                        2 => 'Tuesday',
-                        3 => 'Wednesday',
-                        4 => 'Thursday',
-                        5 => 'Friday',
-                    ])
-                    ->required(),
+                Forms\Components\Select::make('purpose_id') // ADD THIS
+                ->relationship('purpose', 'purpose_name'),
+
+                Forms\Components\CheckboxList::make('days_of_week') // Changed to Multi-choice
+                ->label('Select Days')
+                ->options([
+                    'Monday' => 'Monday',
+                    'Tuesday' => 'Tuesday',
+                    'Wednesday' => 'Wednesday',
+                    'Thursday' => 'Thursday',
+                    'Friday' => 'Friday',
+                ])
+                ->columns(2)
+                ->required()
+                ->dehydrated(true),
                 Forms\Components\TimePicker::make('start_time')->required(),
                 Forms\Components\TimePicker::make('end_time')->required(),
                 Forms\Components\TextInput::make('max_slots')->numeric()->default(5),
@@ -44,16 +50,15 @@ class TimeAvailabilityResource extends Resource
         return $table
             ->columns([
 
-                // 2. Shows the Day (formatted for readability)
                 TextColumn::make('day_of_week')
                     ->label('Day')
-                    ->formatStateUsing(fn (int $state): string => match ($state) {
-                        1 => 'Monday',
-                        2 => 'Tuesday',
-                        3 => 'Wednesday',
-                        4 => 'Thursday',
-                        5 => 'Friday',
-                        default => 'Other',
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'Monday'    => 'Monday',
+                        'Tuesday'   => 'Tuesday',
+                        'Wednesday' => 'Wednesday',
+                        'Thursday'  => 'Thursday',
+                        'Friday'    => 'Friday',
+                        default     => $state,
                     }),
 
                 // 3. Shows Start and End Times

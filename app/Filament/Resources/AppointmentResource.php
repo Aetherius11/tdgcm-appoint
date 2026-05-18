@@ -55,11 +55,11 @@ class AppointmentResource extends Resource
                     ->label('DATE')
                     ->date('M d, Y'),
 
-                TextColumn::make('timeAvailability.time_range')
+                Tables\Columns\TextColumn::make('timeSlot.time_range') 
                     ->label('TIME SLOT')
                     ->placeholder('N/A'),
 
-                TextColumn::make('window.name')
+                Tables\Columns\TextColumn::make('window.name') 
                     ->label('WINDOW')
                     ->badge()
                     ->color('info')
@@ -83,7 +83,8 @@ class AppointmentResource extends Resource
                         if (!$record->called_at) return '<span class="text-gray-400">No activity</span>';
                         
                         $call = $record->called_at->format('h:i A');
-                        $end = $record->serve_at ? $record->serve_at->format('h:i A') : '--';
+                        // CHANGE $record->serve_at TO $record->served_at or $record->transaction_completed_at
+                        $end = $record->transaction_completed_at ? $record->transaction_completed_at->format('h:i A') : '--';
                         
                         return "
                             <div class='text-xs'>
@@ -97,10 +98,12 @@ class AppointmentResource extends Resource
                 TextColumn::make('transaction_time')
                     ->label('TRANSACTION TIME')
                     ->state(function ($record) {
-                        if (!$record->called_at || !$record->serve_at) return '--';
-                        return $record->called_at->diffAsCarbonInterval($record->serve_at)->forHumans(['short' => true]);
+                        // Use served_at and transaction_completed_at
+                        if (!$record->served_at || !$record->transaction_completed_at) return '--';
+                        return $record->served_at->diffAsCarbonInterval($record->transaction_completed_at)->forHumans(['short' => true]);
                     }),
-            ])   
+            ]) 
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 // 1. THE CALENDAR DATE FILTER (Add this one)
                 Tables\Filters\Filter::make('appointment_date')
@@ -142,6 +145,7 @@ class AppointmentResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+        
     }
 
     public static function getPages(): array

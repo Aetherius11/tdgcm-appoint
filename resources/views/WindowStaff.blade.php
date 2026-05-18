@@ -28,13 +28,13 @@
         </div>
         <div class="flex items-center space-x-4">
             <!-- Window Number Dropdown -->
-            <form action="{{ route('window.change-window') }}" method="POST" class="flex items-center space-x-2">
+            <form action="{{ route('window.change-window') }}" method="POST">
                 @csrf
                 <label class="text-gray-300 font-bold">Window:</label>
                 <select name="window_id" class="px-3 py-2 rounded-lg text-gray-800 font-bold" onchange="this.form.submit()">
                     @foreach($availableWindows as $win)
-                        <option value="{{ $win->id }}" {{ $windowNumber == $win->id ? 'selected' : '' }}>
-                            Window {{ $win->name }}
+                        <option value="{{ $win->id }}" {{ $windowId == $win->id ? 'selected' : '' }}>
+                            {{ $win->name }}
                         </option>
                     @endforeach
                 </select>
@@ -121,7 +121,7 @@
                                 <select name="window_number" class="w-full px-4 py-4 rounded-lg text-gray-800 font-bold text-2xl text-center mb-6 border-2 border-gray-300 focus:border-blue-500 focus:outline-none" required>
                                     <option value="" disabled selected>Select Target Window</option>
                                     @foreach($availableWindows as $win)
-                                        @if($win->id != $windowNumber)
+                                        @if($win->id != $windowId)
                                             <option value="{{ $win->id }}">Window {{ $win->name }}</option>
                                         @endif
                                     @endforeach

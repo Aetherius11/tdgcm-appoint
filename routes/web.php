@@ -20,7 +20,7 @@ Route::middleware(['auth'])->group(function () {
     })->name('staff.dashboard');
 });
 
-
+Route::get('/api/time-slots', [AppointmentController::class, 'getTimeSlots']);
 
 Route::get('/api/purposes/{principalId}', function ($principalId) {
     // We find the Department (Principal) first, 

@@ -38,8 +38,12 @@ class TimeAvailabilityResource extends Resource
                 ->columns(2)
                 ->required()
                 ->dehydrated(true),
-                Forms\Components\TimePicker::make('start_time')->required(),
-                Forms\Components\TimePicker::make('end_time')->required(),
+                Forms\Components\TimePicker::make('start_time')
+                ->seconds(false)
+                ->required(),
+                Forms\Components\TimePicker::make('end_time')
+                ->seconds(false)
+                ->required(),
                 Forms\Components\TextInput::make('max_slots')->numeric()->default(5),
             ]);
     }

@@ -10,6 +10,8 @@ use App\Models\Purpose;
 use App\Models\TimeAvailability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class AppointmentController extends Controller
 {
@@ -33,24 +35,45 @@ class AppointmentController extends Controller
         return view('appointment', compact('principals', 'purposes', 'timeSlots', 'currentTime', 'currentDate'));
     }
 
+    public function getTimeSlots(Request $request)
+    {
+        $purposeId = $request->query('purpose_id');
+        $date = $request->query('date');
+        
+        // Get the name of the day (e.g., "Monday") from the selected date
+        $dayOfWeek = \Carbon\Carbon::parse($date)->format('l'); 
+
+        return Response::json(
+            \App\Models\TimeAvailability::where('purpose_id', $purposeId)
+                ->where('day_of_week', $dayOfWeek)
+                ->get()
+        );
+    }
+
     /**
      * Get available time slots for a specific purpose and date.
      */
-    public function getAvailableTimeSlots(Request $request)
+    public function getAvailableTimeSlots(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'purpose_id' => 'required|exists:purposes,id',
-            'appointment_date' => 'required|date',
-        ]);
+        $purposeId = $request->query('purpose_id');
+        $date = $request->query('date');
 
-        $date = $validated['appointment_date'];
-        $dayOfWeek = date('N', strtotime($date)); // 1 (Mon) to 7 (Sun)
+        if (!$purposeId || !$date) {
+            return response()->json([]);
+        }
 
-        $timeSlots = TimeAvailability::where('purpose_id', $validated['purpose_id'])
-            ->where('day_of_week', $dayOfWeek)
+        // 1. Get the verbal day name from the selected calendar date (e.g., "Monday")
+        $dayOfWeek = \Carbon\Carbon::parse($date)->format('l');
+
+        // 2. Fetch slots matching the day name string and the direct column ID
+        $slots = TimeAvailability::where('day_of_week', $dayOfWeek)
+            ->where(function ($query) use ($purposeId) {
+                $query->where('purpose_id', $purposeId)
+                    ->orWhereNull('purpose_id'); // Keeps it flexible for Option B setup
+            })
             ->get();
 
-        return response()->json($timeSlots);
+        return response()->json($slots);
     }
 
     /**

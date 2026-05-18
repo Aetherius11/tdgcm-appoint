@@ -114,12 +114,9 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Time</label>
-                            <select name="time_slot_id" id="time_slot_select" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select name="time_slot_id" id="time_slot_select" class="w-full border-gray-200 border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" disabled>
                                 <option value="">Select a time</option>
-                                @foreach($timeSlots as $slot)
-                                    <option value="{{ $slot->id }}" data-start="{{ $slot->start_time }}" data-end="{{ $slot->end_time }}">{{ $slot->start_time }} - {{ $slot->end_time }}</option>
-                                @endforeach
-                            </select>
+                                </select>
                             <p class="text-xs text-gray-400 mt-1" id="time_note"></p>
                         </div>
 
@@ -189,6 +186,46 @@
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
     }
+
+    function fetchAvailableTimeSlots() {
+    const purposeId = document.getElementById('purpose-select').value;
+    const dateStr = document.getElementById('appointment_date').value;
+    const timeSelect = document.getElementById('time_slot_select');
+
+    // Reset dropdown if dependencies are missing
+    if (!purposeId || !dateStr) {
+        timeSelect.innerHTML = '<option value="">Select a time</option>';
+        timeSelect.disabled = true;
+        return;
+    }
+
+    // Fetch only the slots belonging to this purpose and date
+    fetch(`/api/time-slots?purpose_id=${purposeId}&date=${dateStr}`)
+        .then(response => response.json())
+        .then(slots => {
+            timeSelect.innerHTML = '<option value="">Select a time</option>';
+            
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = slot.id;
+                option.textContent = `${slot.start_time} - ${slot.end_time}`;
+                
+                // Keep your existing time filters working smoothly
+                option.setAttribute('data-start', slot.start_time);
+                option.setAttribute('data-end', slot.end_time);
+                
+                timeSelect.appendChild(option);
+            });
+
+            timeSelect.disabled = false;
+            evaluateTimeSlots(dateStr); // Run your today/past checking logic
+        })
+        .catch(error => console.error('Error fetching time slots:', error));
+}
+
+// Trigger fetch when either field changes
+document.getElementById('purpose-select').addEventListener('change', fetchAvailableTimeSlots);
+document.getElementById('appointment_date').addEventListener('change', fetchAvailableTimeSlots);
 
     // Function to evaluate and disable/enable time slots based on current time and selected date
     function evaluateTimeSlots(selectedDate) {

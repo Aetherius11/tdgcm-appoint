@@ -69,18 +69,25 @@ class TVDisplayController extends Controller
 
     private function buildUpNext()
     {
+        // Only show tickets when there is an active (open or on-break) counter to serve them.
+        // Transferred tickets are only shown if their target counter is still active.
+        $activeWindowIds = Window::all()
+            ->filter(fn($w) => in_array(Cache::get("window_status_{$w->id}", 'closed'), ['open', 'break']))
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($activeWindowIds)) {
+            return collect();
+        }
+
         return Appointment::with('applicant')
-            ->where(function ($q) {
-                $q->where(function ($inner) {
-                    $inner->whereIn('status', ['pending', 'approved'])->whereNull('window_number');
-                })
-                ->orWhere(function ($inner) {
-                    $inner->whereIn('status', ['pending', 'approved'])->whereNotNull('window_number');
-                })
-                ->orWhere('status', 'on_hold');
-            })
+            ->whereIn('status', ['pending', 'approved', 'on_hold'])
             ->whereNotNull('checked_in_at')
             ->where(fn($q) => $this->dateFilter($q))
+            ->where(function ($q) use ($activeWindowIds) {
+                $q->whereNull('window_number')
+                  ->orWhereIn('window_number', $activeWindowIds);
+            })
             ->orderBy('checked_in_at', 'asc')
             ->take(10)
             ->get();
@@ -117,7 +124,7 @@ class TVDisplayController extends Controller
                 'appoint_no'     => str_pad(substr($currentCall->appoint_no, -4), 4, '0', STR_PAD_LEFT),
                 'name'           => substr($currentCall->applicant->first_name, 0, 1) . '. ' . $currentCall->applicant->last_name,
                 'counter_number' => $currentCall->counter_number,
-                'counter_name'   => $counters[$currentCall->counter_number]['counter'] ?? ('Counter ' . $currentCall->counter_number),
+                'counter_name'   => 'Counter ' . $currentCall->counter_number,
                 'status'         => $currentCall->status,
                 'call_key'       => $currentCall->appoint_no . '_' . ($currentCall->called_at?->timestamp),
             ];

@@ -71,8 +71,7 @@
                 @endif
                 <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
-            <a href="{{ route('appointments.index') }}" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Appointments List</a>
-            <a href="{{ route('qr.scanner') }}" target="_blank" rel="noopener noreferrer" class="text-white font-bold transition text-lg">QR Scanner</a>
+            <a href="{{ route('appointments.index') }}" target="_blank" rel="noopener noreferrer" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition text-lg">Dashboard</a>
         </div>
         <div class="flex items-center space-x-4">
             <form method="POST" action="{{ route('logout') }}">
@@ -568,17 +567,32 @@
                 break;
 
             case 'expired':
+                pendingOverrideQrData = null;
                 iconEl.className = 'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-orange-500 text-white';
                 iconEl.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
                 titleEl.textContent = '⚠ Appointment Expired';
                 titleEl.className = 'text-lg font-bold text-orange-800';
                 textEl.textContent = data.message;
                 statusEl.className = 'rounded-xl p-6 mb-6 bg-orange-100 border border-orange-200';
-                
+
                 if (data.appointment) {
                     showAppointmentDetails(data.appointment);
+                    pendingOverrideQrData = data.appointment.appoint_no
+                        ? JSON.stringify({ appointment_no: data.appointment.appoint_no })
+                        : null;
                 }
-                
+
+                if (pendingOverrideQrData) {
+                    const overrideBtnExp = document.createElement('button');
+                    overrideBtnExp.id = 'override_btn';
+                    overrideBtnExp.className = 'mt-3 w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors';
+                    overrideBtnExp.textContent = 'Override — Allow Late Check-in';
+                    overrideBtnExp.onclick = overrideConfirm;
+                    const existingExp = document.getElementById('override_btn');
+                    if (existingExp) existingExp.remove();
+                    statusEl.appendChild(overrideBtnExp);
+                }
+
                 addToRecentScans(data, 'warning');
                 playSound('warning');
                 break;

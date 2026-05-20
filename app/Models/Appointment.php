@@ -24,6 +24,8 @@ class Appointment extends Model
         'served_at',
         'served_by_user_id',
         'transaction_completed_at',
+        'hold_started_at',
+        'hold_duration_seconds',
         'remarks',
     ];
 
@@ -33,6 +35,7 @@ class Appointment extends Model
         'called_at' => 'datetime',
         'served_at' => 'datetime',
         'transaction_completed_at' => 'datetime',
+        'hold_started_at' => 'datetime',
     ];
 
     // Boot method to generate unique appointment number

@@ -212,9 +212,24 @@
                             <!-- Live Timer for Ongoing Transaction -->
                             @if($currentAppointment->served_at && !$currentAppointment->transaction_completed_at)
                                 <div class="border-t border-gray-400 pt-4 mt-4">
-                                    <p class="text-center text-lg text-blue-700 font-semibold">
-                                        <span class="font-semibold">Service Duration:</span> 
-                                        <span id="live-timer" class="text-2xl font-mono text-blue-800" data-start="{{ $currentAppointment->served_at->toIso8601String() }}">00:00:00</span>
+                                    <p class="text-center text-lg font-semibold">
+                                        <span class="font-semibold">Service Duration:</span>
+                                        @if($currentAppointment->status === 'on_hold')
+                                            @php
+                                                $holdElapsed = max(0,
+                                                    $currentAppointment->served_at->diffInSeconds($currentAppointment->hold_started_at)
+                                                    - ($currentAppointment->hold_duration_seconds ?? 0)
+                                                );
+                                            @endphp
+                                            <span class="text-2xl font-mono text-orange-600">
+                                                {{ gmdate('H:i:s', $holdElapsed) }}
+                                            </span>
+                                            <span class="text-sm font-bold text-orange-600 ml-1">(PAUSED)</span>
+                                        @else
+                                            <span id="live-timer" class="text-2xl font-mono text-blue-800"
+                                                  data-start="{{ $currentAppointment->served_at->toIso8601String() }}"
+                                                  data-hold="{{ $currentAppointment->hold_duration_seconds ?? 0 }}">00:00:00</span>
+                                        @endif
                                     </p>
                                 </div>
                             @endif
@@ -232,12 +247,18 @@
                     <div class="space-y-4 flex-grow" id="next-queue-list">
                         @if(isset($nextQueue) && $nextQueue->isNotEmpty())
                             @foreach($nextQueue as $next)
-                                <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm {{ $next->status === 'on_hold' ? 'border-2 border-orange-400 bg-orange-50' : '' }}">
+                                @php
+                                        $isTransferred = $next->window_number == $windowId && $next->status !== 'on_hold';
+                                    @endphp
+                                    <div class="ticket-box rounded-md py-4 px-6 flex justify-between items-center shadow-sm
+                                        {{ $next->status === 'on_hold' ? 'border-2 border-orange-400 bg-orange-50' : ($isTransferred ? 'border-2 border-purple-400 bg-purple-50' : '') }}">
                                     <div class="flex items-center gap-4">
                                         <span class="text-4xl font-bold text-black">{{ str_pad(substr($next->appoint_no, -4), 4, '0', STR_PAD_LEFT) }}</span>
                                         <span class="text-3xl font-bold uppercase text-black">{{ substr($next->applicant->first_name, 0, 1) }}. {{ $next->applicant->last_name }}</span>
                                         @if($next->status === 'on_hold')
                                             <span class="text-xs bg-orange-500 text-white px-2 py-1 rounded font-bold">Held</span>
+                                        @elseif($isTransferred)
+                                            <span class="text-xs bg-purple-500 text-white px-2 py-1 rounded font-bold">Transferred</span>
                                         @endif
                                     </div>
                                     <div class="flex items-center gap-4">
@@ -285,23 +306,25 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($todayCompleted as $completed)
+                                    @foreach($todayCompleted as $log)
+                                        @php $applicant = $log->appointment?->applicant; @endphp
                                         <tr class="border-b border-gray-100 hover:bg-blue-50/30 transition">
-                                            <td class="py-2 px-3 font-semibold text-blue-600">{{ $completed->appoint_no }}</td>
+                                            <td class="py-2 px-3 font-semibold text-blue-600">{{ $log->appoint_no }}</td>
                                             <td class="py-2 px-3 text-gray-800">
-                                                {{ $completed->applicant->first_name }} {{ $completed->applicant->last_name }}
+                                                {{ $applicant?->first_name }} {{ $applicant?->last_name }}
+                                                @if($log->end_type === 'transferred')
+                                                    <span class="ml-1 text-xs text-yellow-600 font-bold">(Transferred)</span>
+                                                @endif
                                             </td>
                                             <td class="py-2 px-3 text-center text-gray-600">
-                                                {{ $completed->served_at ? $completed->served_at->format('g:i A') : '--' }}
+                                                {{ $log->served_at ? $log->served_at->format('g:i A') : '--' }}
                                             </td>
                                             <td class="py-2 px-3 text-center text-gray-600">
-                                                {{ $completed->transaction_completed_at ? $completed->transaction_completed_at->format('g:i A') : '--' }}
+                                                {{ $log->ended_at ? $log->ended_at->format('g:i A') : '--' }}
                                             </td>
                                             <td class="py-2 px-3 text-center">
-                                                @if($completed->served_at && $completed->transaction_completed_at)
-                                                    @php
-                                                        $duration = $completed->served_at->diffInSeconds($completed->transaction_completed_at);
-                                                    @endphp
+                                                @if($log->served_at && $log->ended_at)
+                                                    @php $duration = $log->served_at->diffInSeconds($log->ended_at); @endphp
                                                     <span class="text-green-700 font-medium">{{ gmdate('i:s', $duration) }}</span>
                                                 @else
                                                     <span class="text-gray-400">--</span>
@@ -438,22 +461,23 @@
             }
         });
 
-        // Live Timer for ongoing transaction
+        // Live Timer for ongoing transaction (subtracts accumulated hold time)
         function updateLiveTimer() {
             const timerElement = document.getElementById('live-timer');
             if (!timerElement) return;
 
             const startTime = new Date(timerElement.getAttribute('data-start'));
+            const holdSeconds = parseInt(timerElement.getAttribute('data-hold') || '0', 10);
             const now = new Date();
-            const diff = Math.floor((now - startTime) / 1000);
+            const diff = Math.max(0, Math.floor((now - startTime) / 1000) - holdSeconds);
 
             const hours = Math.floor(diff / 3600);
             const minutes = Math.floor((diff % 3600) / 60);
             const seconds = diff % 60;
 
-            timerElement.textContent = 
-                String(hours).padStart(2, '0') + ':' + 
-                String(minutes).padStart(2, '0') + ':' + 
+            timerElement.textContent =
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
                 String(seconds).padStart(2, '0');
         }
 

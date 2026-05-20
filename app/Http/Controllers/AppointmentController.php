@@ -368,24 +368,42 @@ class AppointmentController extends Controller
 
             // Check if appointment is expired (more than 1 hour past end time)
             if ($endTime && $now->diffInMinutes($endTime, false) < -60) {
-                // Appointment expired - update status
+                if (!$guardOverride) {
+                    return response()->json([
+                        'success' => false,
+                        'status' => 'expired',
+                        'message' => 'Appointment expired. This appointment was scheduled for ' . $endTime->format('h:i A') . ' and it\'s now past the 1-hour grace period.',
+                        'appointment' => [
+                            'appoint_no' => $appointment->appoint_no,
+                            'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                            'principal' => $appointment->principal->name ?? 'N/A',
+                            'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
+                            'date' => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
+                            'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                            'scheduled_end' => $endTime->format('h:i A'),
+                        ],
+                    ]);
+                }
+
+                // Guard override: allow late check-in
                 $appointment->update([
-                    'status' => 'cancelled',
-                    'remarks' => 'Appointment expired - checked in more than 1 hour late',
+                    'status'       => 'approved',
+                    'checked_in_at' => $now,
+                    'remarks'      => 'Guard override: checked in late at ' . $now->format('h:i A') . ' (scheduled end: ' . $endTime->format('h:i A') . ')',
                 ]);
 
                 return response()->json([
-                    'success' => false,
-                    'status' => 'expired',
-                    'message' => 'Appointment expired. This appointment was scheduled for ' . $endTime->format('h:i A') . ' and it\'s now past the 1-hour grace period.',
+                    'success' => true,
+                    'status'  => 'checked_in',
+                    'message' => 'Successfully checked in! (Guard override — late check-in allowed)',
                     'appointment' => [
-                        'appoint_no' => $appointment->appoint_no,
-                        'name' => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
-                        'principal' => $appointment->principal->name ?? 'N/A',
-                        'purpose' => $appointment->purpose->purpose_name ?? 'N/A',
-                        'date' => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
-                        'time_slot' => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
-                        'scheduled_end' => $endTime->format('h:i A'),
+                        'appoint_no'   => $appointment->appoint_no,
+                        'name'         => $appointment->applicant->first_name . ' ' . $appointment->applicant->last_name,
+                        'principal'    => $appointment->principal->name ?? 'N/A',
+                        'purpose'      => $appointment->purpose->purpose_name ?? 'N/A',
+                        'date'         => \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y'),
+                        'time_slot'    => $appointment->timeSlot ? $appointment->timeSlot->start_time . ' - ' . $appointment->timeSlot->end_time : 'N/A',
+                        'checked_in_at' => $now->format('h:i A'),
                     ],
                 ]);
             }

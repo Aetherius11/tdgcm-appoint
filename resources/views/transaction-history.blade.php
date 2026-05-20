@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction History - Window {{ $windowId }}</title>
+    <title>Transaction History - Counter {{ $windowName }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tcm-navy { background-color: #003366; }
@@ -16,7 +16,12 @@
     <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center space-x-6">
             <div class="flex items-center space-x-2">
-                <img src="{{ asset('tdg_logo.png') }}" alt="Logo" class="h-10">
+                @php $companyLogo = \App\Models\Company::where('is_active', true)->value('branding_logo'); @endphp
+                @if($companyLogo)
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($companyLogo) }}" alt="Logo" class="h-10 w-10 object-contain">
+                @else
+                    <img src="{{ asset('tdg_logo.png') }}" alt="Logo" class="h-10">
+                @endif
                 <span class="font-bold text-xl">TDG Crew Management</span>
             </div>
             <a href="/" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-white font-bold transition text-lg">Home</a>
@@ -35,7 +40,7 @@
             
             <!-- Header -->
             <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">Transaction History - Window {{ $windowId }}</h1>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Transaction History - Counter {{ $windowName }}</h1>
                 <p class="text-gray-600">View all completed transactions for your window</p>
             </div>
 
@@ -106,64 +111,71 @@
                             <tr class="bg-[#F9FAFB] border-b border-gray-200">
                                 <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Ticket No.</th>
                                 <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Applicant Name</th>
+                                <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
                                 <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Called At</th>
                                 <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Service Started</th>
-                                <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Completed At</th>
+                                <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Ended At</th>
                                 <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Service Duration</th>
                                 <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Wait Duration</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            @forelse($appointments as $appointment)
+                            @forelse($logs as $log)
+                                @php $applicant = $log->appointment?->applicant; @endphp
                                 <tr class="hover:bg-blue-50/30 transition-colors duration-150">
                                     <td class="px-5 py-4">
                                         <span class="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                            #{{ $appointment->appoint_no }}
+                                            #{{ $log->appoint_no }}
                                         </span>
                                     </td>
                                     <td class="px-5 py-4">
-                                        <div class="text-sm font-medium text-gray-800">
-                                            {{ $appointment->applicant->first_name }} {{ $appointment->applicant->last_name }}
-                                        </div>
-                                        <div class="text-xs text-gray-500">{{ $appointment->applicant->email }}</div>
-                                    </td>
-                                    <td class="px-5 py-4 text-center">
-                                        @if($appointment->called_at)
-                                            <span class="text-sm text-gray-700">{{ $appointment->called_at->format('g:i A') }}</span>
+                                        @if($applicant)
+                                            <div class="text-sm font-medium text-gray-800">
+                                                {{ $applicant->first_name }} {{ $applicant->last_name }}
+                                            </div>
+                                            <div class="text-xs text-gray-500">{{ $applicant->email }}</div>
                                         @else
                                             <span class="text-gray-400 text-sm">--</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-center">
-                                        @if($appointment->served_at)
-                                            <span class="text-sm text-green-700">{{ $appointment->served_at->format('g:i A') }}</span>
+                                        @if($log->end_type === 'completed')
+                                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">Completed</span>
+                                        @else
+                                            <span class="text-xs font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Transferred</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4 text-center">
+                                        @if($log->called_at)
+                                            <span class="text-sm text-gray-700">{{ $log->called_at->format('g:i A') }}</span>
                                         @else
                                             <span class="text-gray-400 text-sm">--</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-center">
-                                        @if($appointment->transaction_completed_at)
-                                            <span class="text-sm text-gray-700">{{ $appointment->transaction_completed_at->format('g:i A') }}</span>
+                                        @if($log->served_at)
+                                            <span class="text-sm text-green-700">{{ $log->served_at->format('g:i A') }}</span>
                                         @else
                                             <span class="text-gray-400 text-sm">--</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-center">
-                                        @if($appointment->served_at && $appointment->transaction_completed_at)
-                                            @php
-                                                $serviceDuration = $appointment->served_at->diffInSeconds($appointment->transaction_completed_at);
-                                            @endphp
-                                            <span class="text-sm font-medium text-blue-600">{{ gmdate('i:s', $serviceDuration) }}</span>
+                                        @if($log->ended_at)
+                                            <span class="text-sm text-gray-700">{{ $log->ended_at->format('g:i A') }}</span>
                                         @else
                                             <span class="text-gray-400 text-sm">--</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-center">
-                                        @if($appointment->called_at && $appointment->served_at)
-                                            @php
-                                                $waitDuration = $appointment->called_at->diffInSeconds($appointment->served_at);
-                                            @endphp
-                                            <span class="text-sm font-medium text-green-600">{{ gmdate('i:s', $waitDuration) }}</span>
+                                        @if($log->served_at && $log->ended_at)
+                                            <span class="text-sm font-medium text-blue-600">{{ gmdate('i:s', $log->served_at->diffInSeconds($log->ended_at)) }}</span>
+                                        @else
+                                            <span class="text-gray-400 text-sm">--</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4 text-center">
+                                        @if($log->called_at && $log->served_at)
+                                            <span class="text-sm font-medium text-green-600">{{ gmdate('i:s', $log->called_at->diffInSeconds($log->served_at)) }}</span>
                                         @else
                                             <span class="text-gray-400 text-sm">--</span>
                                         @endif
@@ -171,10 +183,10 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-5 py-16 text-center">
+                                    <td colspan="8" class="px-5 py-16 text-center">
                                         <div class="flex flex-col items-center gap-3">
                                             <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                                            <p class="text-gray-500 text-sm">No completed transactions found for the selected filters.</p>
+                                            <p class="text-gray-500 text-sm">No transactions found for the selected filters.</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -185,9 +197,9 @@
             </div>
 
             <!-- Pagination -->
-            @if($appointments->hasPages())
+            @if($logs->hasPages())
             <div class="mt-6">
-                {{ $appointments->links() }}
+                {{ $logs->links() }}
             </div>
             @endif
 

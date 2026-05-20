@@ -38,6 +38,11 @@
 </head>
 <body class="bg-gray-100 h-screen overflow-hidden flex flex-col p-3 gap-3 font-sans">
 
+    <!-- Small sound fallback button — only visible if browser blocks autoplay -->
+    <div id="sound-btn" onclick="unlockAudio()" style="position:fixed;bottom:14px;right:14px;background:rgba(0,0,0,0.55);color:#fff;padding:7px 13px;border-radius:8px;cursor:pointer;z-index:9999;font-size:0.85rem;display:none;">
+        🔇 Tap to enable sound
+    </div>
+
     <!-- Header -->
     <header class="bg-white border border-gray-200 rounded-lg shadow-sm px-5 py-3 flex items-center flex-shrink-0">
         <div class="flex items-center gap-3">
@@ -122,7 +127,7 @@
                         </div>
                         <div id="ns-counter" class="bg-sky py-5 text-center text-8xl font-black leading-none text-navy">
                             @if($currentCall)
-                                {{ $counters[$currentCall->counter_number]['counter'] ?? ('Counter ' . $currentCall->counter_number) }}
+                                Counter {{ $currentCall->counter_number }}
                             @else
                                 <span class="text-gray-300">———</span>
                             @endif
@@ -274,6 +279,36 @@
         box.innerHTML = `<div class="grid grid-cols-2 gap-2">${rows}</div>`;
     }
 
+    // --- Sound unlock (Chrome autoplay policy) ---
+    let audioUnlocked = false;
+
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            ctx.resume();
+        } catch (e) {}
+        if (window.speechSynthesis) {
+            const u = new SpeechSynthesisUtterance('');
+            window.speechSynthesis.speak(u);
+        }
+        audioUnlocked = true;
+        document.getElementById('sound-btn').style.display = 'none';
+    }
+
+    // Try immediately — works if the browser already trusts this origin
+    unlockAudio();
+
+    // Show small fallback button if still blocked after 800 ms
+    setTimeout(() => {
+        if (!audioUnlocked) document.getElementById('sound-btn').style.display = 'block';
+    }, 800);
+
+    // Also silently unlock on any interaction (no overlay needed)
+    ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(evt =>
+        document.addEventListener(evt, () => unlockAudio(), { once: true, passive: true })
+    );
+
     // --- Audio / Speech ---
     function playDoorbell() {
         return new Promise(resolve => {
@@ -301,17 +336,19 @@
     }
 
     function announceCall(callKey, callNum, callName, callCtr) {
-        if (!callKey || localStorage.getItem('last_announced') === callKey) return;
-        localStorage.setItem('last_announced', callKey);
+        if (!callKey || sessionStorage.getItem('last_announced') === callKey) return;
+        sessionStorage.setItem('last_announced', callKey);
         if (!window.speechSynthesis) return;
         const digits = callNum.split('').join(', ');
         const msg = new SpeechSynthesisUtterance(
-            `Now calling number ${digits}. ${callName}, please proceed to Counter ${callCtr}.`
+            `Now calling number ${digits}. ${callName}, please proceed to ${callCtr}.`
         );
         msg.lang = 'en-US'; msg.rate = 0.88; msg.pitch = 1.05; msg.volume = 1;
         function speak() {
             const voices = window.speechSynthesis.getVoices();
-            const preferred = voices.find(v => /female|zira|hazel|samantha|karen|moira|fiona|victoria/i.test(v.name) && /en[-_]/i.test(v.lang))
+            const femalePattern = /female|zira|eva|aria|hazel|samantha|karen|moira|fiona|victoria|elsa|emma|jenny|jane|susan|helen|linda|lisa/i;
+            const preferred = voices.find(v => femalePattern.test(v.name) && /en[-_]/i.test(v.lang))
+                           || voices.find(v => femalePattern.test(v.name))
                            || voices.find(v => /en[-_]/i.test(v.lang))
                            || voices[0];
             if (preferred) msg.voice = preferred;
@@ -333,7 +370,8 @@
             updateUpNext(data.upNext);
             document.getElementById('tv-datetime').textContent = data.now;
             if (data.currentCall && data.currentCall.status === 'calling') {
-                announceCall(data.currentCall.call_key, data.currentCall.appoint_no, data.currentCall.name, data.currentCall.counter_number);
+                const ctrLabel = data.currentCall.counter_name || ('Counter ' + data.currentCall.counter_number);
+                announceCall(data.currentCall.call_key, data.currentCall.appoint_no, data.currentCall.name, ctrLabel);
             }
         } catch (e) {}
     }
@@ -354,8 +392,8 @@
         announceCall(
             '{{ $currentCall->appoint_no }}_{{ $currentCall->called_at?->timestamp }}',
             '{{ str_pad(substr($currentCall->appoint_no, -4), 4, "0", STR_PAD_LEFT) }}',
-            '{{ $currentCall->applicant->first_name }} {{ $currentCall->applicant->last_name }}',
-            '{{ $currentCall->counter_number }}'
+            '{{ substr($currentCall->applicant->first_name, 0, 1) }} {{ $currentCall->applicant->last_name }}',
+            'Counter {{ $currentCall->counter_number }}'
         );
         @endif
 

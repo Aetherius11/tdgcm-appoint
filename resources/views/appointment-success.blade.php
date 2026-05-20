@@ -26,6 +26,7 @@
                 @endif
                 <h2 class="text-xl font-bold" style="margin: 0; font-size: 1.25rem;">Booking Confirmed! ✓</h2>
                 <p class="text-sm opacity-90" style="margin-top: 4px; font-size: 0.875rem;">Your appointment has been successfully booked.</p>
+                <p style="margin-top: 8px; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; background: #dc2626; color: white; display: inline-block; padding: 4px 12px; border-radius: 4px;">⚠ PLEASE SAVE THE QR FOR CHECK IN</p>
             </div>
 
             <div class="p-6">

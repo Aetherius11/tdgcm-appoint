@@ -45,46 +45,38 @@ class TimeAvailabilityResource extends Resource
     }
 
 
+    // app/Filament/Resources/TimeAvailabilityResource.php
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-
-                TextColumn::make('day_of_week')
+                // 1. Clean display of the text day column
+                Tables\Columns\TextColumn::make('day_of_week')
                     ->label('Day')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'Monday'    => 'Monday',
-                        'Tuesday'   => 'Tuesday',
-                        'Wednesday' => 'Wednesday',
-                        'Thursday'  => 'Thursday',
-                        'Friday'    => 'Friday',
-                        default     => $state,
-                    }),
+                    ->sortable(),
 
                 // 3. Shows Start and End Times
-                TextColumn::make('start_time')->label('Start')->time('h:i A'),
-                TextColumn::make('end_time')->label('End')->time('h:i A'),
+                Tables\Columns\TextColumn::make('start_time')->label('Start')->time('h:i A'),
+                Tables\Columns\TextColumn::make('end_time')->label('End')->time('h:i A'),
 
                 // 4. Shows Max Slots
-                TextColumn::make('max_slots')->label('Limit'),
+                Tables\Columns\TextColumn::make('max_slots')->label('Limit'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('day_of_week')
                     ->options([
-                        1 => 'Monday',
-                        2 => 'Tuesday',
-                        3 => 'Wednesday',
-                        4 => 'Thursday',
-                        5 => 'Friday',
+                        'Monday'    => 'Monday',    // 👈 Fixed keys from integers to matching strings
+                        'Tuesday'   => 'Tuesday',
+                        'Wednesday' => 'Wednesday',
+                        'Thursday'  => 'Thursday',
+                        'Friday'    => 'Friday',
                     ]),
-                Tables\Filters\SelectFilter::make('purpose_id')
-                    ->relationship('purpose', 'purpose_name')
+
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ]);
-
-            
     }
 
     public static function getRelations(): array

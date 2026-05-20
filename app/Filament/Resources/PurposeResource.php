@@ -55,26 +55,35 @@ class PurposeResource extends Resource
                     ->label('Available Days')
                     ->listWithLineBreaks()
                     ->bulleted()
-                    // We use the $record (the Purpose model) to get the data
                     ->state(function ($record): array {
-                    return $record->timeAvailabilities
-                        ->groupBy(fn ($slot) => $slot->start_time . '-' . $slot->end_time)
-                        ->map(function ($group, $timeRange) {
-                            // Added unique() to prevent the "Mon,Mon,Tues" issue in your screenshot
-                            $days = $group->pluck('day_of_week')
-                                ->unique() 
-                                ->map(fn ($day) => match ((int)$day) {
-                                    1 => 'Mon', 2 => 'Tues', 3 => 'Wed', 
-                                    4 => 'Thur', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun',
-                                    default => 'Other',
-                                })
-                                ->implode(',');
+                        return $record->timeAvailabilities
+                            ->groupBy(function ($slot) {
+                                // Strips off trailing seconds (:00) for a cleaner format
+                                $start = \Carbon\Carbon::parse($slot->start_time)->format('H:i');
+                                $end = \Carbon\Carbon::parse($slot->end_time)->format('H:i');
+                                return "{$start}-{$end}";
+                            })
+                            ->map(function ($group, $timeRange) {
+                                $days = $group->pluck('day_of_week')
+                                    ->unique() 
+                                    ->map(fn ($day) => match ($day) {
+                                        'Monday'    => 'Mon',
+                                        'Tuesday'   => 'Tue',
+                                        'Wednesday' => 'Wed',
+                                        'Thursday'  => 'Thu',
+                                        'Friday'    => 'Fri',
+                                        'Saturday'  => 'Sat',
+                                        'Sunday'    => 'Sun',
+                                        default     => substr($day, 0, 3),
+                                    })
+                                    ->implode(',');
 
-                            return "{$timeRange} ({$days})";
-                        })
-                        ->values()
-                        ->toArray();
-                })
+                                // Custom requested presentation: HH:MM-HH:MM (Days)
+                                return "{$timeRange} ({$days})";
+                            })
+                            ->values()
+                            ->toArray();
+                    })
                     ->color('success')
                     ->weight('bold'),
                 Tables\Columns\TextColumn::make('created_at')

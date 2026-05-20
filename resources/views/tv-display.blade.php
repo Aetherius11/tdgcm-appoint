@@ -127,7 +127,7 @@
                         </div>
                         <div id="ns-counter" class="bg-sky py-5 text-center text-8xl font-black leading-none text-navy">
                             @if($currentCall)
-                                Counter {{ $currentCall->counter_number }}
+                                {{ $counters[$currentCall->counter_number]['counter'] ?? ('Counter ' . $currentCall->counter_number) }}
                             @else
                                 <span class="text-gray-300">———</span>
                             @endif

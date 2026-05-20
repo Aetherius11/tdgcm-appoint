@@ -41,7 +41,7 @@
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Tickets</div>
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Visitors</div>
                 <div class="text-3xl font-bold text-gray-800 mt-1">{{ $appointments->total() }}</div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">

@@ -180,7 +180,6 @@
                 <li>Bring a valid government-issued ID</li>
                 <li>Bring any required documents related to your appointment purpose</li>
                 <li>Present this QR code at the security desk for check-in</li>
-                <li>If you need to cancel or reschedule, please do so at least 24 hours in advance</li>
             </ul>
         </div>
 

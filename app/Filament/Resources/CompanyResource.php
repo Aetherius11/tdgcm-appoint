@@ -40,6 +40,28 @@ class CompanyResource extends Resource
                 Forms\Components\Textarea::make('privacy_policy'),
                 Forms\Components\Toggle::make('is_active')
                     ->required(),
+
+                Forms\Components\Section::make('Landing Page Content')
+                    ->description('Customize the text and badge image shown on the public booking page.')
+                    ->schema([
+                        Forms\Components\TextInput::make('landing_headline')
+                            ->label('Headline')
+                            ->placeholder("You're just one click away from securing your appointment...")
+                            ->maxLength(500),
+                        FileUpload::make('landing_badge_image')
+                            ->label('Badge / Seal Image')
+                            ->image()
+                            ->disk('public')
+                            ->directory('branding')
+                            ->visibility('public')
+                            ->imagePreviewHeight('120')
+                            ->maxSize(2048)
+                            ->helperText('Replaces the DPO/DPS circle badge. PNG or JPG, max 2 MB.'),
+                        Forms\Components\RichEditor::make('landing_body')
+                            ->label('Body Text')
+                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'undo', 'redo'])
+                            ->placeholder('Upon registration, the personal information...'),
+                    ]),
             ])
             ->columns(1);
     }

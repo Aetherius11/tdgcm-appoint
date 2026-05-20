@@ -30,37 +30,45 @@
     <main class="max-w-7xl mx-auto px-6 py-12">
         <div class="grid lg:grid-cols-2 gap-16 items-start">
 
+            @php $company = \App\Models\Company::where("is_active", true)->first(); @endphp
             <div class="space-y-8">
                 <div class="text-center lg:text-left">
-                    <h2 class="text-2xl font-extrabold text-gray-44j00 uppercase tracking-wide">
-                        You're just one click away from securing your appointment.
-                            Pick your entry type below and let’s get started!
+                    <h2 class="text-2xl font-extrabold text-gray-900 uppercase tracking-wide">
+                        {{ $company?->landing_headline ?: "You’re just one click away from securing your appointment. Pick your entry type below and let’s get started!" }}
                     </h2>
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-8 items-center lg:items-start">
-                    <div class="w-48 shrink-0">
-                        <div class="border-4 border-indigo-900 rounded-full p-6 text-center text-[10px] font-bold text-indigo-900">
-                            <p>DPO/DPS</p>
-                            <p class="text-lg">REGISTERED</p>
-                            <div class="my-2 border-t border-indigo-900"></div>
-                            <p>DATA PRIVACY ACT 2012</p>
-                        </div>
+                    <div class="shrink-0 flex items-center justify-center" style="width:182px;">
+                        @if($company?->landing_badge_image)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::url($company->landing_badge_image) }}"
+                                 alt="Badge" style="width:182px;height:182px;object-fit:contain;">
+                        @else
+                            <div class="border-4 border-indigo-900 rounded-full p-6 text-center text-[10px] font-bold text-indigo-900">
+                                <p>DPO/DPS</p>
+                                <p class="text-lg">REGISTERED</p>
+                                <div class="my-2 border-t border-indigo-900"></div>
+                                <p>DATA PRIVACY ACT 2012</p>
+                            </div>
+                        @endif
                     </div>
 
                     <div class="text-sm text-gray-600 leading-relaxed space-y-4">
-                        <p>
-                            Upon registration, the personal information you have provided will be collected and processed for documentation purposes in accordance with the <strong>Data Privacy Act of 2012 (R.A. 10173 or DPA)</strong> and TDGCM Privacy Policy.
-                        </p>
-
-                        <h3 class="font-bold text-gray-800">Important Reminders:</h3>
-                        <ol class="list-decimal ml-4 space-y-3">
-                            <li>Kindly ensure that all information entered in the form is accurate and complete.</li>
-                            <li>Upon confirmation, you are expected to arrive at the office on your scheduled date and specified time.</li>
-                            <li>Please bring a valid government-issued ID and any required documents to facilitate your appointment.</li>
-                            <li>Walk-in appointments without prior registration may not be accommodated.</li>
-                        </ol>
-                        <p class="font-semibold italic">TCM EasyQue — Your Time, Our Priority.</p>
+                        @if($company?->landing_body)
+                            <div class="prose prose-sm max-w-none">{!! $company->landing_body !!}</div>
+                        @else
+                            <p>
+                                Upon registration, the personal information you have provided will be collected and processed for documentation purposes in accordance with the <strong>Data Privacy Act of 2012 (R.A. 10173 or DPA)</strong> and TDGCM Privacy Policy.
+                            </p>
+                            <h3 class="font-bold text-gray-800">Important Reminders:</h3>
+                            <ol class="list-decimal ml-4 space-y-3">
+                                <li>Kindly ensure that all information entered in the form is accurate and complete.</li>
+                                <li>Upon confirmation, you are expected to arrive at the office on your scheduled date and specified time.</li>
+                                <li>Please bring a valid government-issued ID and any required documents to facilitate your appointment.</li>
+                                <li>Walk-in appointments without prior registration may not be accommodated.</li>
+                            </ol>
+                            <p class="font-semibold italic">TCM EasyQue — Your Time, Our Priority.</p>
+                        @endif
                     </div>
                 </div>
             </div>

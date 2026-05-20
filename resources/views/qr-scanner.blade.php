@@ -84,8 +84,8 @@
     <main class="max-w-4xl mx-auto px-6 py-8">
         
         <!-- Scanner Section -->
-        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-center">
+        <div class="rounded-2xl shadow-lg overflow-hidden" style="background:#1e40af;">
+            <div class="p-6 text-center" style="background:linear-gradient(to right,#2563eb,#4338ca);">
                 <h2 class="text-2xl font-bold text-white">QR Code Scanner</h2>
                 <p class="text-blue-100 text-sm mt-1">Scan appointment QR codes to check in visitors</p>
             </div>
@@ -105,22 +105,22 @@
 
                 <!-- Camera Status -->
                 <div id="camera_status" class="text-center mb-4">
-                    <p class="text-sm text-gray-500">Initializing camera...</p>
+                    <p class="text-sm text-blue-100">Initializing camera...</p>
                 </div>
 
                 <!-- Manual Input (fallback) -->
                 <div class="mb-6">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Or enter appointment number manually</label>
+                    <label class="block text-xs font-bold text-blue-100 uppercase mb-2">Or enter appointment number manually</label>
                     <div class="flex gap-2">
-                        <input type="text" id="manual_appoint_no" placeholder="e.g., A-2026042901" 
-                            class="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none uppercase"
+                        <input type="text" id="manual_appoint_no" placeholder="e.g., A-2026042901"
+                            class="flex-1 border border-blue-400 rounded-lg px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-white focus:border-white outline-none uppercase text-white placeholder-blue-200" style="background:rgba(255,255,255,0.15);"
                             autocomplete="off" autofocus>
-                        <button onclick="processManualInput()" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
+                        <button onclick="processManualInput()"
+                            class="bg-white text-blue-700 hover:bg-blue-50 font-bold px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
                             Check
                         </button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">💡 Tip: You can also just type and press Enter</p>
+                    <p class="text-xs text-blue-200 mt-2">💡 Tip: You can also just type and press Enter</p>
                 </div>
 
                 <!-- Status Messages -->
@@ -160,24 +160,24 @@
                 </div>
 
                 <!-- Instructions -->
-                <div class="bg-gray-50 rounded-xl p-6">
-                    <h3 class="text-sm font-bold text-gray-700 uppercase mb-3">How to use:</h3>
-                    <ol class="space-y-2 text-sm text-gray-600">
+                <div class="rounded-xl p-6" style="background:rgba(255,255,255,0.1);">
+                    <h3 class="text-sm font-bold text-blue-100 uppercase mb-3">How to use:</h3>
+                    <ol class="space-y-2 text-sm text-white">
                         <li class="flex items-start gap-2">
-                            <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                            <span class="w-5 h-5 bg-white text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
                             <span><strong>Hardware Scanner:</strong> Just scan the QR code! The system automatically captures scanner input - no need to click anywhere.</span>
                         </li>
                         <li class="flex items-start gap-2">
-                            <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                            <span class="w-5 h-5 bg-white text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
                             <span><strong>Camera:</strong> Allow camera access when prompted, then hold the QR code within the blue frame</span>
                         </li>
                         <li class="flex items-start gap-2">
-                            <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                            <span class="w-5 h-5 bg-white text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
                             <span><strong>Manual:</strong> Type the appointment number in the field below and press Enter</span>
                         </li>
                     </ol>
-                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p class="text-xs text-blue-700">
+                    <div class="mt-4 p-3 rounded-lg" style="background:rgba(255,255,255,0.1);border:1px solid rgba(147,197,253,0.4);">
+                        <p class="text-xs text-blue-100">
                             <strong>💡 Auto-Capture Mode:</strong> Hardware barcode/QR scanners work automatically. Just point and scan - the system will detect the input and process it immediately!
                         </p>
                     </div>
@@ -362,7 +362,7 @@
                 
                 cameraStatus.innerHTML = `
                     <p class="text-sm text-orange-600 font-medium">${errorMsg}</p>
-                    <p class="text-xs text-gray-500 mt-1">Using manual input instead.</p>
+                    <p class="text-xs text-blue-100 mt-1">Using manual input instead.</p>
                 `;
             }
         }
@@ -392,7 +392,7 @@
                     if (configIndex >= cameraConfigs.length) {
                         cameraStatus.innerHTML = `
                             <p class="text-sm text-orange-600 font-medium">Could not start camera.</p>
-                            <p class="text-xs text-gray-500 mt-1">Please use manual input below.</p>
+                            <p class="text-xs text-blue-100 mt-1">Please use manual input below.</p>
                         `;
                         return;
                     }
@@ -406,7 +406,7 @@
                         onScanSuccess,
                         onScanFailure
                     ).then(() => {
-                        cameraStatus.innerHTML = '<p class="text-sm text-green-600 font-medium">✓ Camera ready - Point QR code at the frame</p>';
+                        cameraStatus.innerHTML = '<p class="text-sm text-green-300 font-medium">✓ Camera ready - Point QR code at the frame</p>';
                     }).catch(err => {
                         console.warn(`Config ${configIndex + 1} failed:`, err);
                         configIndex++;

@@ -20,7 +20,10 @@ class WindowStaffController extends Controller
 
         $availableWindows = $this->getWindowsForUser();
 
-        $windowId = session('staff_window_id', $availableWindows->first()?->id);
+        if (!session('staff_window_id')) {
+            session(['staff_window_id' => $availableWindows->first()?->id]);
+        }
+        $windowId = session('staff_window_id');
 
         $departmentPurposes = Purpose::whereHas('principals', function($q) use ($user) {
             $q->where('principals.id', $user->current_team_id);
@@ -39,13 +42,17 @@ class WindowStaffController extends Controller
             ->first();
 
         $nextQueue = Appointment::whereIn('status', ['pending', 'approved', 'on_hold'])
-            ->whereIn('purpose_id', $departmentPurposes)
             ->whereNotNull('checked_in_at')
             ->where(function($q) use ($windowId) {
                 $q->whereNull('window_number')
                   ->orWhere('window_number', $windowId);
             })
-            ->whereDate('appointment_date', today())
+            ->where(function($q) {
+                $q->whereDate('appointment_date', today())
+                  ->orWhere(function($q2) {
+                      $q2->whereNotNull('remarks')->where('remarks', 'like', 'Guard override:%');
+                  });
+            })
             ->with(['applicant', 'purpose', 'timeSlot'])
             ->orderByRaw('CASE WHEN window_number = ? THEN 0 ELSE 1 END', [$windowId])
             ->orderBy('checked_in_at', 'asc')
@@ -152,7 +159,14 @@ class WindowStaffController extends Controller
             return back()->with('error', 'Please select a valid window.');
         }
 
-        session(['staff_window_id' => $windowId]);
+        // Sync window_status session to the new window's actual cache state
+        // so the blade and notify() stay in agreement
+        $cachedStatus = Cache::get("window_status_{$windowId}", 'closed');
+
+        session([
+            'staff_window_id' => $windowId,
+            'window_status'   => $cachedStatus,
+        ]);
 
         return back()->with('success', 'Assigned to window successfully.');
     }
@@ -181,7 +195,12 @@ class WindowStaffController extends Controller
         $appointmentId = $request->input('appointment_id');
         $windowNumber  = session('staff_window_id', 1);
 
-        $windowStatus = Cache::get("window_status_{$windowNumber}", 'closed');
+        // Cache may have been cleared (server restart, artisan cache:clear, etc.)
+        // Fall back to session so the counter doesn't appear closed when it isn't.
+        $windowStatus = Cache::get("window_status_{$windowNumber}") ?? session('window_status', 'closed');
+        if ($windowStatus === 'open') {
+            Cache::put("window_status_{$windowNumber}", 'open', now()->addHours(24));
+        }
         if ($windowStatus !== 'open') {
             return back()->with('error', 'Please open your counter before calling applicants.');
         }
